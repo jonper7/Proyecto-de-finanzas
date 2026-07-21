@@ -1,0 +1,5 @@
+Desde el móvil: en Ajustes → Descargar copia, y al compartir eliges Drive y la guardas en esa carpeta Finanzas.
+
+En el PC, cuando quieras volcar lo del móvil a PostgreSQL:
+python -m scripts.importar_carpeta . jonpherrera@gmail.com --simular
+python -m scripts.importar_carpeta . jonpherrera@gmail.com

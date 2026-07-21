@@ -300,8 +300,26 @@
 
 <script>
   if ("serviceWorker" in navigator) {
+
+    // Cuando se publica una versión nueva, el service worker que la
+    // trae toma el control y la página se recarga una sola vez. Sin
+    // esto habría que abrir la aplicación dos veces para verla.
+    let recargando = false;
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (recargando) return;
+      recargando = true;
+      location.reload();
+    });
+
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch(() => {
+      navigator.serviceWorker.register("sw.js").then((registro) => {
+        // Busca actualizaciones cada vez que se abre y al volver a ella.
+        registro.update();
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) registro.update();
+        });
+      }).catch(() => {
         // Sin service worker la aplicación funciona igual; solo
         // deja de poder abrirse sin conexión.
       });
