@@ -25,21 +25,10 @@
   // Formatos
   // ------------------------------------------------------------------
 
-  const euros = new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-  });
-
-  const mesLargo = new Intl.DateTimeFormat("es-ES", {
-    month: "long",
-    year: "numeric",
-  });
-
-  const diaLargo = new Intl.DateTimeFormat("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  // La moneda y los formatos se definen en config.js
+  const euros = FORMATO.dinero;
+  const mesLargo = FORMATO.mesLargo;
+  const diaLargo = FORMATO.diaLargo;
 
   /**
    * Fecha ISO en hora local. toISOString() pasa a UTC y puede
@@ -52,10 +41,8 @@
     return `${y}-${m}-${d}`;
   }
 
-  /** Acepta la coma decimal, que es como se escribe aquí. */
-  function normalizarMonto(texto) {
-    return String(texto).trim().replace(/\./g, "").replace(",", ".");
-  }
+  // Acepta tanto 45,50 como 45.50: ver config.js
+  const normalizarMonto = FORMATO.normalizarMonto;
 
   function identificador() {
     if (crypto.randomUUID) return crypto.randomUUID();
@@ -607,6 +594,7 @@
 
   async function iniciar() {
 
+    FORMATO.aplicarSimbolo();
     await DB.abrir();
 
     const usuario = await DB.ajuste("usuario");

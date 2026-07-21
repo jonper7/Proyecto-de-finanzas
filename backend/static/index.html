@@ -28,7 +28,7 @@
 <section id="pantalla-login" class="login">
 
   <div class="login__marca">
-    <span class="login__cifra">€</span>
+    <span class="login__cifra" data-moneda>€</span>
     <h1 class="login__titulo">Finanzas</h1>
     <p class="login__sub">Control de gastos personales</p>
   </div>
@@ -204,7 +204,7 @@
     </div>
 
     <label class="monto">
-      <span class="monto__signo">€</span>
+      <span class="monto__signo" data-moneda>€</span>
       <input type="text" id="monto" name="monto" inputmode="decimal"
              placeholder="0,00" required>
     </label>
@@ -255,6 +255,7 @@
 
 <div id="aviso" class="aviso" hidden></div>
 
+<script src="/static/js/config.js"></script>
 <script src="/static/js/db.js"></script>
 <script src="/static/js/api.js"></script>
 <script src="/static/js/sync.js"></script>

@@ -6,11 +6,12 @@
    llamadas de sincronización nunca se cachean.
    ===================================================================== */
 
-const CACHE = "finanzas-v2";
+const CACHE = "finanzas-v3";
 
 const ARCHIVOS = [
   "/",
   "/static/css/estilos.css",
+  "/static/js/config.js",
   "/static/js/db.js",
   "/static/js/api.js",
   "/static/js/sync.js",

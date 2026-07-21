@@ -8,22 +8,11 @@
 
 const RESUMEN = (() => {
 
-  const euros = new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-  });
-
-  const mesLargo = new Intl.DateTimeFormat("es-ES", {
-    month: "long",
-    year: "numeric",
-  });
-
-  const diaLargo = new Intl.DateTimeFormat("es-ES", {
-    day: "numeric",
-    month: "long",
-  });
-
-  const mesCorto = new Intl.DateTimeFormat("es-ES", { month: "short" });
+  // La moneda y los formatos se definen en config.js
+  const euros = FORMATO.dinero;
+  const mesLargo = FORMATO.mesLargo;
+  const diaLargo = FORMATO.diaCorto;
+  const mesCorto = FORMATO.mesCorto;
 
   const $ = (selector) => document.querySelector(selector);
 
