@@ -1,0 +1,63 @@
+Migraciones de base de datos (Alembic)
+======================================
+
+Todos los comandos se ejecutan desde la carpeta `backend/`, con el
+entorno virtual activo. La URL de conexión sale de `.env`, no de
+`alembic.ini`.
+
+Base de datos que YA tiene las tablas (tu caso actual)
+------------------------------------------------------
+
+La revisión `0001_esquema_inicial` describe el esquema que ya existe,
+así que no hay que ejecutarla: solo marcarla como aplicada.
+
+    alembic stamp head
+
+Comprueba después que no haya diferencias entre los modelos y la base:
+
+    alembic revision --autogenerate -m "verificacion"
+
+Si el archivo generado tiene `pass` en `upgrade()`, modelos y base
+coinciden: borra ese archivo y sigue. Si trae operaciones, revísalas
+una por una antes de aplicarlas.
+
+Base de datos nueva (Docker, CI, otro equipo)
+---------------------------------------------
+
+    alembic upgrade head
+
+Crea el esquema `transacciones`, la extensión `pgcrypto` y las ocho
+tablas desde cero.
+
+Flujo habitual al cambiar un modelo
+------------------------------------
+
+1. Editar el modelo en `app/models/`.
+2. Generar la migración:
+
+       alembic revision --autogenerate -m "descripcion del cambio"
+
+3. **Revisar el archivo generado** en `alembic/versions/`. El
+   autogenerado no detecta renombrados (los ve como borrar + crear)
+   ni cambios de tipo complejos.
+4. Aplicar:
+
+       alembic upgrade head
+
+Comandos útiles
+---------------
+
+    alembic current              # revisión aplicada en la base
+    alembic history --verbose    # historial completo
+    alembic downgrade -1         # deshacer la última migración
+    alembic upgrade head --sql   # ver el SQL sin ejecutarlo
+
+Notas
+-----
+
+- La tabla de control `alembic_version` vive dentro del esquema
+  `transacciones`, no en `public`.
+- `include_object` en `env.py` limita el autogenerado a ese esquema,
+  para que Alembic nunca proponga borrar tablas de `public`.
+- `DB_CREATE_ALL` en `.env` debe quedarse en `False`: a partir de
+  ahora el esquema lo gestiona Alembic, no `create_all()`.

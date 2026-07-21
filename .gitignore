@@ -1,0 +1,36 @@
+# Entornos virtuales
+.venv/
+venv/
+
+# Variables de entorno: contienen contraseñas y claves
+.env
+*.env
+!.env.example
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# SDK de Flutter: son gigabytes y se instala aparte
+dev/flutter/
+
+# Copias de seguridad del móvil
+*.json.bak
+finanzas-*.json
+
+# Logs
+*.log
+
+# Editores
+.vscode/
+.idea/
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Bases de datos locales de prueba
+*.db
+*.sqlite3
