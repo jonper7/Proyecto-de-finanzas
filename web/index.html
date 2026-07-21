@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#14120f">
+<meta name="theme-color" content="#0f172a">
 <title>Finanzas</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="iconos/icono-192.png">
@@ -34,6 +34,14 @@
       <h2 id="mes-actual" class="mes__nombre"></h2>
       <button id="mes-siguiente" class="mes__flecha" aria-label="Mes siguiente">›</button>
     </div>
+
+    <button id="abrir-resumen" class="salir" title="Resumen" aria-label="Resumen"
+            style="margin-right:8px">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+           stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>
+      </svg>
+    </button>
 
     <button id="abrir-ajustes" class="salir" title="Ajustes" aria-label="Ajustes">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
@@ -79,6 +87,63 @@
       <path d="M12 5v14M5 12h14"/>
     </svg>
   </button>
+
+</main>
+
+
+<!-- ================================================================
+     Resumen
+     ================================================================ -->
+<main id="pantalla-resumen" class="app app--ancha" hidden>
+
+  <header class="cabecera">
+    <button id="volver-resumen" class="mes__flecha" aria-label="Volver">‹</button>
+    <div class="mes">
+      <button id="res-anterior" class="mes__flecha" aria-label="Mes anterior">‹</button>
+      <h2 id="res-mes" class="mes__nombre"></h2>
+      <button id="res-siguiente" class="mes__flecha" aria-label="Mes siguiente">›</button>
+    </div>
+    <span style="flex:1"></span>
+  </header>
+
+  <div class="tarjetas">
+
+    <div class="tarjeta tarjeta--ingreso">
+      <p class="tarjeta__etiqueta">Ingresos</p>
+      <p class="tarjeta__cifra" id="kpi-ingresos">—</p>
+      <p class="tarjeta__pie" id="kpi-ingresos-n">—</p>
+    </div>
+
+    <div class="tarjeta tarjeta--gasto">
+      <p class="tarjeta__etiqueta">Gastos</p>
+      <p class="tarjeta__cifra" id="kpi-gastos">—</p>
+      <p class="tarjeta__pie" id="kpi-gastos-n">—</p>
+    </div>
+
+    <div class="tarjeta tarjeta--balance">
+      <p class="tarjeta__etiqueta">Balance</p>
+      <p class="tarjeta__cifra" id="kpi-balance">—</p>
+      <p class="tarjeta__pie" id="kpi-balance-pie">—</p>
+    </div>
+
+  </div>
+
+  <section class="bloque">
+    <h3 class="bloque__titulo">En qué se va el dinero</h3>
+    <p class="bloque__nota">Gasto del mes por categoría.</p>
+    <div id="por-categoria"></div>
+  </section>
+
+  <section class="bloque">
+    <h3 class="bloque__titulo">Últimos seis meses</h3>
+    <p class="bloque__nota">Ingresos y gastos de cada mes.</p>
+    <div id="evolucion"></div>
+  </section>
+
+  <section class="bloque">
+    <h3 class="bloque__titulo">Mayores gastos del mes</h3>
+    <div id="top-gastos"></div>
+  </section>
 
 </main>
 
@@ -230,6 +295,7 @@
 
 <script src="js/datos.js"></script>
 <script src="js/copia.js"></script>
+<script src="js/resumen.js"></script>
 <script src="js/app.js"></script>
 
 <script>

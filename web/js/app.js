@@ -379,18 +379,41 @@
     await refrescar();
   }
 
+
+  // ------------------------------------------------------------------
+  // Resumen
+  // ------------------------------------------------------------------
+
+  function mostrarResumen() {
+    $("#pantalla-app").hidden = true;
+    $("#pantalla-ajustes").hidden = true;
+    $("#pantalla-resumen").hidden = false;
+    pintarPantallaResumen();
+  }
+
+  function pintarPantallaResumen() {
+    RESUMEN.pintar({
+      todos: estado.todos,
+      mes: estado.mes,
+      categorias: estado.categoriasPorId,
+      subcategorias: estado.subcategoriasPorId,
+    });
+  }
+
   // ------------------------------------------------------------------
   // Ajustes
   // ------------------------------------------------------------------
 
   function mostrarAjustes() {
     $("#pantalla-app").hidden = true;
+    $("#pantalla-resumen").hidden = true;
     $("#pantalla-ajustes").hidden = false;
     pintarAjustes();
   }
 
   function mostrarMovimientos() {
     $("#pantalla-ajustes").hidden = true;
+    $("#pantalla-resumen").hidden = true;
     $("#pantalla-app").hidden = false;
   }
 
@@ -719,6 +742,25 @@
       );
     });
 
+    $("#abrir-resumen").addEventListener("click", mostrarResumen);
+    $("#volver-resumen").addEventListener("click", mostrarMovimientos);
+
+    $("#res-anterior").addEventListener("click", async () => {
+      estado.mes = new Date(
+        estado.mes.getFullYear(), estado.mes.getMonth() - 1, 1
+      );
+      await refrescar();
+      pintarPantallaResumen();
+    });
+
+    $("#res-siguiente").addEventListener("click", async () => {
+      estado.mes = new Date(
+        estado.mes.getFullYear(), estado.mes.getMonth() + 1, 1
+      );
+      await refrescar();
+      pintarPantallaResumen();
+    });
+
     $("#abrir-ajustes").addEventListener("click", mostrarAjustes);
     $("#volver").addEventListener("click", mostrarMovimientos);
 
@@ -733,6 +775,7 @@
       if (evento.key !== "Escape") return;
       if (!$("#hoja").hidden) cerrarHoja();
       else if (!$("#pantalla-ajustes").hidden) mostrarMovimientos();
+      else if (!$("#pantalla-resumen").hidden) mostrarMovimientos();
     });
   }
 
