@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.jonper7.twa",
+      "sha256_cert_fingerprints": [
+        "D8:B9:9D:DB:CC:08:B2:32:28:7F:6D:94:99:5A:6A:84:01:A4:98:6B:26:CE:1A:FE:D3:3A:83:FF:07:C5:4A:E5"
+      ]
+    }
+  }
+]
