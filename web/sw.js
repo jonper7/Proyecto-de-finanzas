@@ -8,7 +8,7 @@
    subdirectorio, como ocurre en GitHub Pages.
    ===================================================================== */
 
-const CACHE = "finanzas-v8";
+const CACHE = "finanzas-v9";
 
 const ARCHIVOS = [
   "./",

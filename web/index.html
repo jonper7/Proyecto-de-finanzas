@@ -179,10 +179,15 @@
 
     <button id="elegir-archivo" class="boton boton--fantasma"
             style="width:100%;margin:10px 0 0">
-      Importar copia o CSV
+      Importar copias o CSV
     </button>
 
-    <input type="file" id="archivo" accept="application/json,.json,text/csv,.csv" hidden>
+    <p class="bloque__nota" style="margin:8px 0 0">
+      Puedes elegir varios a la vez: el CSV del histórico y las copias
+      de Drive. No se duplica nada.
+    </p>
+
+    <input type="file" id="archivo" multiple accept="application/json,.json,text/csv,.csv" hidden>
 
   </section>
 

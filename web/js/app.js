@@ -630,33 +630,64 @@
 
   async function importar(evento) {
 
-    const archivo = evento.target.files[0];
+    // Se pueden elegir varios archivos a la vez (el CSV del histórico
+    // y todas las copias JSON de Drive). Se procesan en orden y, como
+    // cada movimiento lleva su uuid, lo que falta en uno lo completa
+    // otro sin duplicar nada.
+    const archivos = [...evento.target.files];
 
-    if (!archivo) return;
+    if (!archivos.length) return;
 
     const reemplazar = confirm(
       "¿Reemplazar lo que hay ahora?\n\n" +
-      "Aceptar = borra lo actual y deja solo la copia.\n" +
-      "Cancelar = añade la copia a lo que ya tienes."
+      "Aceptar = borra lo actual y deja solo lo que importes.\n" +
+      "Cancelar = añade lo importado a lo que ya tienes."
     );
+
+    // Los archivos se ordenan por nombre para que el CSV (histórico
+    // grande) entre primero y las copias vayan encima.
+    archivos.sort((a, b) => a.name.localeCompare(b.name));
+
+    let totalGlobal = 0;
+    let errores = 0;
 
     try {
 
-      let texto = await archivo.text();
+      for (let i = 0; i < archivos.length; i += 1) {
 
-      // Si es un CSV (por ejemplo, el histórico exportado de la base
-      // de datos), se convierte al formato de copia antes de cargarlo.
-      if (IMPORTARCSV.pareceCSV(texto, archivo.name)) {
-        texto = IMPORTARCSV.aCopiaJSON(texto);
+        const archivo = archivos[i];
+
+        try {
+
+          let texto = await archivo.text();
+
+          if (IMPORTARCSV.pareceCSV(texto, archivo.name)) {
+            texto = IMPORTARCSV.aCopiaJSON(texto);
+          }
+
+          // Solo el primer archivo puede reemplazar; el resto se
+          // acumula, para que "reemplazar" signifique dejar la unión
+          // de todo lo seleccionado.
+          const total = await COPIA.importar(texto, {
+            reemplazar: reemplazar && i === 0,
+          });
+
+          totalGlobal += total;
+
+        } catch (error) {
+          errores += 1;
+        }
       }
-
-      const total = await COPIA.importar(texto, { reemplazar });
 
       await cargarCatalogos();
       await refrescar();
       await pintarAjustes();
 
-      avisar(`Restaurados ${total} movimientos`);
+      const resumen = errores
+        ? `${totalGlobal} movimientos · ${errores} archivo(s) con error`
+        : `${totalGlobal} movimientos importados`;
+
+      avisar(resumen, errores > 0);
 
     } catch (error) {
       avisar(error.message, true);
