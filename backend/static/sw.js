@@ -6,7 +6,7 @@
    llamadas de sincronización nunca se cachean.
    ===================================================================== */
 
-const CACHE = "finanzas-v3";
+const CACHE = "finanzas-v7";
 
 const ARCHIVOS = [
   "/",

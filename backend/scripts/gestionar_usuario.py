@@ -7,6 +7,7 @@ Uso (desde la carpeta backend/, con el entorno virtual activo):
     python -m scripts.gestionar_usuario crear <email> <nombre>
     python -m scripts.gestionar_usuario password <email>
     python -m scripts.gestionar_usuario email <id> <nuevo-email>
+    python -m scripts.gestionar_usuario nombre <id> <nuevo-nombre>
 
 El acceso a la aplicación es por correo, así que un usuario creado
 antes de tener la columna de email necesita que se le asigne uno con
@@ -140,6 +141,32 @@ def email(id_usuario: str, nuevo_email: str) -> None:
             )
 
 
+def nombre(id_usuario: str, nuevo_nombre: str) -> None:
+    """
+    Cambia el nombre de un usuario (lo que se usa para iniciar sesión
+    en el dashboard local).
+    """
+
+    nuevo_nombre = nuevo_nombre.strip()
+
+    if not nuevo_nombre:
+        sys.exit("El nombre no puede estar vacío.")
+
+    with SessionLocal() as db:
+
+        usuario = db.get(Usuario, int(id_usuario))
+
+        if usuario is None:
+            sys.exit(f"No existe ningún usuario con id {id_usuario}.")
+
+        anterior = usuario.nombre
+        usuario.nombre = nuevo_nombre
+
+        db.commit()
+
+        print(f"Usuario {usuario.id}: «{anterior}» -> «{nuevo_nombre}»")
+
+
 def main() -> None:
 
     argumentos = sys.argv[1:]
@@ -160,6 +187,9 @@ def main() -> None:
 
     elif comando == "email" and len(resto) == 2:
         email(resto[0], resto[1])
+
+    elif comando == "nombre" and len(resto) == 2:
+        nombre(resto[0], resto[1])
 
     else:
         sys.exit(__doc__)

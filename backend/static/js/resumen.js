@@ -1,9 +1,13 @@
 /* =====================================================================
    Panel de resumen.
 
-   Este archivo lo comparten las dos versiones de la aplicación: la
-   del móvil y la del ordenador. Solo hace cálculos y pinta; recibe
-   los datos ya cargados, sin saber de dónde vienen.
+   Lo comparten las dos versiones (móvil y ordenador). Solo hace
+   cálculos y pinta; recibe los datos ya cargados.
+
+   Gráficas incluidas:
+     - Evolución mensual: barras verticales de ingresos y gastos,
+       con una lectura que se actualiza al tocar cada mes.
+     - Reparto por categoría: donut (SVG) con leyenda.
    ===================================================================== */
 
 const RESUMEN = (() => {
@@ -16,6 +20,13 @@ const RESUMEN = (() => {
 
   const $ = (selector) => document.querySelector(selector);
 
+  // Paleta para el donut: se recorre en orden.
+  const COLORES = [
+    "#00ff88", "#00c8ff", "#b060ff", "#ffd700",
+    "#ff4560", "#ff8c42", "#4dd0e1", "#a3e635",
+    "#f472b6", "#818cf8",
+  ];
+
   const suma = (lista) =>
     lista.reduce((total, m) => total + (Number(m.monto) || 0), 0);
 
@@ -26,20 +37,14 @@ const RESUMEN = (() => {
     });
   }
 
-  /**
-   * Categoría de un movimiento, a través de su subcategoría.
-   */
   function categoriaDe(movimiento, contexto) {
-
     const sub = contexto.subcategorias.get(movimiento.subcategoria_id);
-
     if (!sub) return null;
-
     return contexto.categorias.get(sub.categoria_id) || null;
   }
 
   // ------------------------------------------------------------------
-  // Bloques
+  // Tarjetas
   // ------------------------------------------------------------------
 
   function tarjetas(ingresos, gastos) {
@@ -54,7 +59,6 @@ const RESUMEN = (() => {
 
     $("#kpi-ingresos-n").textContent =
       `${ingresos.length} ${ingresos.length === 1 ? "movimiento" : "movimientos"}`;
-
     $("#kpi-gastos-n").textContent =
       `${gastos.length} ${gastos.length === 1 ? "movimiento" : "movimientos"}`;
 
@@ -73,6 +77,10 @@ const RESUMEN = (() => {
 
     return totalGastos;
   }
+
+  // ------------------------------------------------------------------
+  // Reparto por categoría (donut)
+  // ------------------------------------------------------------------
 
   function porCategoria(gastos, total, contexto) {
 
@@ -97,33 +105,103 @@ const RESUMEN = (() => {
     });
 
     const ordenadas = [...agrupado.entries()].sort((a, b) => b[1] - a[1]);
-    const mayor = ordenadas[0][1];
+
+    // --- Donut en SVG ---------------------------------------------
+    const radio = 54;
+    const circунf = 2 * Math.PI * radio; // circunferencia
+    const circunf2 = circунf;
+
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 130 130");
+    svg.setAttribute("width", "130");
+    svg.setAttribute("height", "130");
+    svg.setAttribute("class", "donut__svg");
+
+    // Aro de fondo.
+    const fondo = document.createElementNS(NS, "circle");
+    fondo.setAttribute("cx", "65");
+    fondo.setAttribute("cy", "65");
+    fondo.setAttribute("r", String(radio));
+    fondo.setAttribute("fill", "none");
+    fondo.setAttribute("stroke", "rgba(255,255,255,0.05)");
+    fondo.setAttribute("stroke-width", "16");
+    svg.appendChild(fondo);
+
+    let acumulado = 0;
+
+    ordenadas.forEach(([, importe], indice) => {
+
+      const fraccion = importe / total;
+      const color = COLORES[indice % COLORES.length];
+
+      const arco = document.createElementNS(NS, "circle");
+      arco.setAttribute("cx", "65");
+      arco.setAttribute("cy", "65");
+      arco.setAttribute("r", String(radio));
+      arco.setAttribute("fill", "none");
+      arco.setAttribute("stroke", color);
+      arco.setAttribute("stroke-width", "16");
+      arco.setAttribute("stroke-linecap", "butt");
+      // El arco cubre su fracción; el resto queda invisible.
+      arco.setAttribute(
+        "stroke-dasharray",
+        `${fraccion * circunf2} ${circunf2}`
+      );
+      // Se coloca girando a partir de lo ya acumulado.
+      arco.setAttribute("stroke-dashoffset", String(-acumulado * circunf2));
+      arco.setAttribute("transform", "rotate(-90 65 65)");
+      arco.style.transition = "stroke-dasharray .5s ease";
+      svg.appendChild(arco);
+
+      acumulado += fraccion;
+    });
+
+    const donut = document.createElement("div");
+    donut.className = "donut";
+
+    const aro = document.createElement("div");
+    aro.className = "donut__aro";
+    aro.appendChild(svg);
+
+    const centro = document.createElement("div");
+    centro.className = "donut__centro";
+    centro.innerHTML =
+      `<span class="donut__total"></span><span class="donut__lbl">TOTAL</span>`;
+    centro.querySelector(".donut__total").textContent = euros.format(total);
+    aro.appendChild(centro);
+
+    donut.appendChild(aro);
+
+    // --- Leyenda ---------------------------------------------------
+    const leyenda = document.createElement("div");
+    leyenda.className = "donut__leyenda";
 
     ordenadas.forEach(([nombre, importe], indice) => {
 
-      const porcentaje = total ? Math.round((importe / total) * 100) : 0;
+      const porcentaje = Math.round((importe / total) * 100);
 
-      const barra = document.createElement("div");
-      barra.className = "barra";
+      const item = document.createElement("div");
+      item.className = "leyenda-item";
+      item.innerHTML = `
+        <span class="leyenda-punto"></span>
+        <span class="leyenda-nombre"></span>
+        <span class="leyenda-pct">${porcentaje}%</span>`;
 
-      barra.innerHTML = `
-        <div class="barra__texto">
-          <span class="barra__nombre"></span>
-          <span class="barra__porcentaje">${porcentaje}%</span>
-          <span class="barra__valor">${euros.format(importe)}</span>
-        </div>
-        <div class="barra__riel"><div class="barra__relleno"></div></div>`;
+      item.querySelector(".leyenda-punto").style.background =
+        COLORES[indice % COLORES.length];
+      item.querySelector(".leyenda-nombre").textContent = nombre;
 
-      barra.querySelector(".barra__nombre").textContent = nombre;
-
-      const relleno = barra.querySelector(".barra__relleno");
-      // Relativo a la mayor, para que las diferencias se vean.
-      relleno.style.width = `${Math.max((importe / mayor) * 100, 2)}%`;
-      relleno.style.animationDelay = `${indice * 45}ms`;
-
-      contenedor.appendChild(barra);
+      leyenda.appendChild(item);
     });
+
+    donut.appendChild(leyenda);
+    contenedor.appendChild(donut);
   }
+
+  // ------------------------------------------------------------------
+  // Evolución mensual (barras verticales con lectura al tocar)
+  // ------------------------------------------------------------------
 
   function evolucion(todos, mes) {
 
@@ -133,10 +211,8 @@ const RESUMEN = (() => {
     const meses = [];
 
     for (let atras = 5; atras >= 0; atras -= 1) {
-
       const fecha = new Date(mes.getFullYear(), mes.getMonth() - atras, 1);
       const movimientos = delMes(todos, fecha);
-
       meses.push({
         fecha,
         ingresos: suma(movimientos.filter((m) => m.tipo === "ingreso")),
@@ -148,36 +224,78 @@ const RESUMEN = (() => {
       ...meses.map((m) => Math.max(m.ingresos, m.gastos)), 1
     );
 
-    meses.forEach((mesDato, indice) => {
+    const grafico = document.createElement("div");
+    grafico.className = "grafico";
 
-      const saldo = mesDato.ingresos - mesDato.gastos;
+    // Lectura del mes seleccionado (por defecto, el último).
+    const lectura = document.createElement("div");
+    lectura.className = "grafico__lectura";
+    lectura.innerHTML = `
+      <span class="grafico__mes"></span>
+      <span class="grafico__cifras">
+        <span class="grafico__ing"></span>
+        <span class="grafico__gas"></span>
+      </span>`;
 
-      const fila = document.createElement("div");
-      fila.className = "mes-fila";
+    const barras = document.createElement("div");
+    barras.className = "grafico__barras";
 
-      fila.innerHTML = `
-        <span class="mes-fila__nombre"></span>
-        <span class="mes-fila__barras">
-          <span class="mes-fila__barra mes-fila__barra--ingreso"></span>
-          <span class="mes-fila__barra mes-fila__barra--gasto"></span>
-        </span>
-        <span class="mes-fila__saldo ${
-          saldo < 0 ? "mes-fila__saldo--negativo" : "mes-fila__saldo--positivo"
-        }">${euros.format(saldo)}</span>`;
+    function seleccionar(indice) {
 
-      fila.querySelector(".mes-fila__nombre").textContent =
-        mesCorto.format(mesDato.fecha).replace(".", "");
+      const dato = meses[indice];
 
-      const barras = fila.querySelectorAll(".mes-fila__barra");
+      grafico.querySelectorAll(".barra-mes").forEach((nodo, i) => {
+        nodo.classList.toggle("barra-mes--activa", i === indice);
+      });
 
-      barras[0].style.width = `${(mesDato.ingresos / maximo) * 100}%`;
-      barras[1].style.width = `${(mesDato.gastos / maximo) * 100}%`;
-      barras[0].style.animationDelay = `${indice * 50}ms`;
-      barras[1].style.animationDelay = `${indice * 50 + 25}ms`;
+      lectura.querySelector(".grafico__mes").textContent =
+        mesLargo.format(dato.fecha);
+      lectura.querySelector(".grafico__ing").textContent =
+        `+${euros.format(dato.ingresos)}`;
+      lectura.querySelector(".grafico__gas").textContent =
+        `−${euros.format(dato.gastos)}`;
+    }
 
-      contenedor.appendChild(fila);
+    meses.forEach((dato, indice) => {
+
+      const grupo = document.createElement("button");
+      grupo.type = "button";
+      grupo.className = "barra-mes";
+
+      const par = document.createElement("span");
+      par.className = "barra-mes__par";
+
+      const ing = document.createElement("span");
+      ing.className = "barra-mes__col barra-mes__col--ing";
+      ing.style.height = `${Math.max((dato.ingresos / maximo) * 100, 2)}%`;
+      ing.style.animationDelay = `${indice * 50}ms`;
+
+      const gas = document.createElement("span");
+      gas.className = "barra-mes__col barra-mes__col--gas";
+      gas.style.height = `${Math.max((dato.gastos / maximo) * 100, 2)}%`;
+      gas.style.animationDelay = `${indice * 50 + 25}ms`;
+
+      par.append(ing, gas);
+
+      const nombre = document.createElement("span");
+      nombre.className = "barra-mes__nombre";
+      nombre.textContent = mesCorto.format(dato.fecha).replace(".", "");
+
+      grupo.append(par, nombre);
+      grupo.addEventListener("click", () => seleccionar(indice));
+
+      barras.appendChild(grupo);
     });
+
+    grafico.append(lectura, barras);
+    contenedor.appendChild(grafico);
+
+    seleccionar(meses.length - 1);
   }
+
+  // ------------------------------------------------------------------
+  // Top de gastos
+  // ------------------------------------------------------------------
 
   function topGastos(gastos, contexto) {
 
@@ -213,7 +331,6 @@ const RESUMEN = (() => {
 
         fila.querySelector(".top__meta").textContent = [
           sub ? sub.nombre : null,
-          // El mediodía evita saltos de día por zona horaria.
           diaLargo.format(new Date(`${movimiento.fecha}T12:00:00`)),
         ].filter(Boolean).join(" · ");
 
@@ -221,18 +338,79 @@ const RESUMEN = (() => {
       });
   }
 
+  // ------------------------------------------------------------------
+  // Comparación anual (gasto total por año)
+  // ------------------------------------------------------------------
+
+  function comparacionAnual(todos) {
+
+    const contenedor = $("#anual");
+    contenedor.innerHTML = "";
+
+    // Suma de gastos por año.
+    const porAnio = new Map();
+
+    todos.forEach((m) => {
+      if (m.tipo !== "gasto") return;
+      const anio = Number(m.fecha.slice(0, 4));
+      porAnio.set(anio, (porAnio.get(anio) || 0) + (Number(m.monto) || 0));
+    });
+
+    if (!porAnio.size) {
+      contenedor.innerHTML =
+        '<p class="bloque__nota">Aún no hay gastos registrados.</p>';
+      return;
+    }
+
+    const anios = [...porAnio.keys()].sort((a, b) => a - b); // ascendente
+    const maximo = Math.max(...porAnio.values(), 1);
+
+    // Se pintan del más reciente al más antiguo.
+    [...anios].reverse().forEach((anio, indice) => {
+
+      const gasto = porAnio.get(anio);
+      const anterior = porAnio.get(anio - 1);
+
+      const fila = document.createElement("div");
+      fila.className = "anual-fila";
+
+      fila.innerHTML = `
+        <div class="anual__cabecera">
+          <span class="anual__anio"></span>
+          <span class="anual__delta"></span>
+          <span class="anual__monto"></span>
+        </div>
+        <div class="anual__riel"><div class="anual__fill"></div></div>`;
+
+      fila.querySelector(".anual__anio").textContent = anio;
+      fila.querySelector(".anual__monto").textContent = euros.format(gasto);
+
+      const fill = fila.querySelector(".anual__fill");
+      fill.style.width = `${Math.max((gasto / maximo) * 100, 2)}%`;
+      fill.style.animationDelay = `${indice * 60}ms`;
+
+      // Variación respecto al año anterior (si existe).
+      const delta = fila.querySelector(".anual__delta");
+
+      if (anterior) {
+        const variacion = Math.round(((gasto - anterior) / anterior) * 100);
+        if (variacion > 0) {
+          delta.textContent = `▲ ${variacion}%`;
+          delta.classList.add("anual__delta--sube");
+        } else if (variacion < 0) {
+          delta.textContent = `▼ ${Math.abs(variacion)}%`;
+          delta.classList.add("anual__delta--baja");
+        } else {
+          delta.textContent = "=";
+        }
+      }
+
+      contenedor.appendChild(fila);
+    });
+  }
+
   return {
 
-    /**
-     * Pinta el panel completo.
-     *
-     * contexto = {
-     *   todos:         array de movimientos (todos los meses),
-     *   mes:           Date del mes que se muestra,
-     *   categorias:    Map de id -> categoría,
-     *   subcategorias: Map de id -> subcategoría,
-     * }
-     */
     pintar(contexto) {
 
       $("#res-mes").textContent = mesLargo.format(contexto.mes);
@@ -245,6 +423,7 @@ const RESUMEN = (() => {
 
       porCategoria(gastos, totalGastos, contexto);
       evolucion(contexto.todos, contexto.mes);
+      comparacionAnual(contexto.todos);
       topGastos(gastos, contexto);
     },
   };

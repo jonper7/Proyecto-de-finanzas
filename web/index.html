@@ -8,7 +8,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="iconos/icono-192.png">
@@ -141,6 +141,12 @@
   </section>
 
   <section class="bloque">
+    <h3 class="bloque__titulo">Comparación anual</h3>
+    <p class="bloque__nota">Gasto total de cada año.</p>
+    <div id="anual"></div>
+  </section>
+
+  <section class="bloque">
     <h3 class="bloque__titulo">Mayores gastos del mes</h3>
     <div id="top-gastos"></div>
   </section>
@@ -173,10 +179,10 @@
 
     <button id="elegir-archivo" class="boton boton--fantasma"
             style="width:100%;margin:10px 0 0">
-      Restaurar desde un archivo
+      Importar copia o CSV
     </button>
 
-    <input type="file" id="archivo" accept="application/json,.json" hidden>
+    <input type="file" id="archivo" accept="application/json,.json,text/csv,.csv" hidden>
 
   </section>
 
@@ -296,6 +302,7 @@
 <script src="js/config.js"></script>
 <script src="js/datos.js"></script>
 <script src="js/copia.js"></script>
+<script src="js/importar_csv.js"></script>
 <script src="js/resumen.js"></script>
 <script src="js/app.js"></script>
 

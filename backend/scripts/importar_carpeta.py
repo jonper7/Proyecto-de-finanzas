@@ -21,10 +21,10 @@ Si defines DRIVE_CARPETA en el archivo .env puedes omitir la carpeta:
     python -m scripts.importar_carpeta . <email>
 """
 
-import os
 import sys
 from pathlib import Path
 
+from app.core.config import settings
 from scripts.importar_copia import importar
 
 
@@ -56,7 +56,7 @@ def main() -> None:
 
     # Un punto significa «usa la carpeta del .env».
     if carpeta_texto == ".":
-        carpeta_texto = os.getenv("DRIVE_CARPETA", "")
+        carpeta_texto = settings.DRIVE_CARPETA
 
         if not carpeta_texto:
             sys.exit(

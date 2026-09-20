@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # token de acceso dura lo suficiente para no molestar al usuario.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
+    # Carpeta sincronizada (Drive, OneDrive...) con las copias del
+    # móvil. La usa scripts.importar_carpeta cuando se le pasa un punto.
+    DRIVE_CARPETA: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

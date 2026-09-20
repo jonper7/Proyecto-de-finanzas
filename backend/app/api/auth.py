@@ -2,9 +2,10 @@
 Endpoints de autenticación.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
+from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -88,3 +89,59 @@ def usuario_actual(usuario: Usuario = Depends(get_current_user)):
     """
 
     return usuario
+
+
+# ----------------------------------------------------------------------
+# Acceso local (sin contraseña)
+#
+# Pensado para uso personal en la propia máquina: entra a partir del
+# correo. Solo responde a peticiones que vienen de localhost, así que
+# desde la red no se puede usar. Si algún día la aplicación se abre a
+# más gente, este endpoint se retira y se vuelve al flujo con
+# contraseña.
+# ----------------------------------------------------------------------
+
+_LOCALHOST = {"127.0.0.1", "::1", "localhost"}
+
+
+class LoginLocalRequest(BaseModel):
+    usuario: str
+
+
+@router.post("/login-local", response_model=Token)
+def login_local(
+    datos: LoginLocalRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Inicia sesión con solo el nombre de usuario desde la propia máquina.
+    """
+
+    cliente = request.client.host if request.client else None
+
+    if cliente not in _LOCALHOST:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo disponible desde la propia máquina.",
+        )
+
+    nombre = datos.usuario.strip()
+
+    # Coincide por nombre exacto (sin distinguir mayúsculas/minúsculas)
+    # y, como cortesía, también por email por si alguien lo escribe.
+    usuario = db.execute(
+        select(Usuario).where(
+            (func.lower(Usuario.nombre) == nombre.lower())
+            | (func.lower(Usuario.email) == nombre.lower()),
+            Usuario.deleted_at.is_(None),
+        )
+    ).scalars().first()
+
+    if usuario is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No existe un usuario con el nombre «{nombre}».",
+        )
+
+    return _token_para(usuario)

@@ -642,7 +642,14 @@
 
     try {
 
-      const texto = await archivo.text();
+      let texto = await archivo.text();
+
+      // Si es un CSV (por ejemplo, el histórico exportado de la base
+      // de datos), se convierte al formato de copia antes de cargarlo.
+      if (IMPORTARCSV.pareceCSV(texto, archivo.name)) {
+        texto = IMPORTARCSV.aCopiaJSON(texto);
+      }
+
       const total = await COPIA.importar(texto, { reemplazar });
 
       await cargarCatalogos();
