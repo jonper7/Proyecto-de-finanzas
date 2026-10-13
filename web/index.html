@@ -248,6 +248,32 @@
 
   <section class="bloque">
 
+    <h3 class="bloque__titulo">Unir subcategorías</h3>
+
+    <p class="bloque__nota">
+      Pasa todos los movimientos de una subcategoría a otra, por ejemplo
+      para juntar dos «Supermercado» que están en categorías distintas.
+    </p>
+
+    <label class="campo">
+      <span class="campo__etiqueta">Mover desde</span>
+      <select id="mover-origen"></select>
+    </label>
+
+    <label class="campo">
+      <span class="campo__etiqueta">Hacia</span>
+      <select id="mover-destino"></select>
+    </label>
+
+    <button id="mover" class="boton boton--fantasma"
+            style="width:100%;margin:4px 0 0">
+      Mover movimientos
+    </button>
+
+  </section>
+
+  <section class="bloque">
+
     <h3 class="bloque__titulo">Medios de pago</h3>
 
     <div id="lista-medios"></div>

@@ -687,6 +687,7 @@
     await pintarEstadoCopia();
     await pintarPresupuestos();
     pintarRecurrentes();
+    pintarUnir();
 
     // --- Categorías con sus subcategorías -------------------------
 
@@ -785,6 +786,112 @@
 
     $("#sobre").textContent =
       `${estado.todos.length} movimientos guardados en este dispositivo.`;
+  }
+
+  // ------------------------------------------------------------------
+  // Unir subcategorías: mueve todos los movimientos de una a otra
+  // ------------------------------------------------------------------
+
+  function pintarUnir() {
+
+    const usos = new Map();
+    estado.todos.forEach((m) => {
+      usos.set(m.subcategoria_id, (usos.get(m.subcategoria_id) || 0) + 1);
+    });
+
+    ["#mover-origen", "#mover-destino"].forEach((selector) => {
+
+      const select = $(selector);
+      const anterior = select.value;
+      select.innerHTML = "";
+
+      estado.categorias.forEach((categoria) => {
+
+        const subs = estado.subcategorias.filter((s) => s.categoria_id === categoria.id);
+        if (!subs.length) return;
+
+        const grupo = document.createElement("optgroup");
+        grupo.label = `${categoria.nombre} (${categoria.tipo})`;
+
+        subs.forEach((sub) => {
+          const opcion = document.createElement("option");
+          opcion.value = sub.id;
+          opcion.textContent = `${sub.nombre} · ${usos.get(sub.id) || 0}`;
+          grupo.appendChild(opcion);
+        });
+
+        select.appendChild(grupo);
+      });
+
+      if (anterior) select.value = anterior;
+    });
+  }
+
+  async function unirSubcategorias() {
+
+    const origenId = Number($("#mover-origen").value);
+    const destinoId = Number($("#mover-destino").value);
+
+    if (!origenId || !destinoId) return;
+
+    if (origenId === destinoId) {
+      avisar("Elige dos subcategorías distintas", true);
+      return;
+    }
+
+    const origen = estado.subcategoriasPorId.get(origenId);
+    const destino = estado.subcategoriasPorId.get(destinoId);
+    const catOrigen = estado.categoriasPorId.get(origen.categoria_id);
+    const catDestino = estado.categoriasPorId.get(destino.categoria_id);
+
+    // Un gasto no debe acabar en una categoría de ingresos, ni al revés.
+    if (catOrigen && catDestino && catOrigen.tipo !== catDestino.tipo) {
+      avisar("No se puede mover entre gastos e ingresos", true);
+      return;
+    }
+
+    const afectados = estado.todos.filter((m) => m.subcategoria_id === origenId);
+
+    const nombreDe = (sub, cat) => `${cat ? cat.nombre : "—"} › ${sub.nombre}`;
+
+    if (!afectados.length) {
+      avisar("Esa subcategoría no tiene movimientos", true);
+    } else if (!confirm(
+      `¿Mover ${afectados.length} movimiento(s)\n` +
+      `de «${nombreDe(origen, catOrigen)}»\n` +
+      `a «${nombreDe(destino, catDestino)}»?`
+    )) {
+      return;
+    }
+
+    if (afectados.length) {
+
+      const originales = afectados.map((m) => ({ ...m }));
+      const ahora = new Date().toISOString();
+
+      await DATOS.escribirVarios(
+        afectados.map((m) => ({ ...m, subcategoria_id: destinoId, actualizado: ahora }))
+      );
+
+      await refrescar();
+      pintarUnir();
+
+      avisarConAccion(`${afectados.length} movimientos movidos`, "Deshacer", async () => {
+        await DATOS.escribirVarios(originales);
+        await refrescar();
+        pintarUnir();
+        avisar("Deshecho");
+      });
+    }
+
+    // Si la de origen quedó vacía, se ofrece quitarla.
+    const quedan = estado.todos.some((m) => m.subcategoria_id === origenId);
+
+    if (!quedan && confirm(`«${nombreDe(origen, catOrigen)}» quedó sin movimientos.\n¿Quitarla?`)) {
+      await DATOS.quitarDelCatalogo("subcategorias", origenId);
+      await cargarCatalogos();
+      await pintarAjustes();
+    }
   }
 
   async function pintarPresupuestos() {
@@ -1146,6 +1253,7 @@
     $("#elegir-archivo").addEventListener("click", () => $("#archivo").click());
     $("#archivo").addEventListener("change", importar);
 
+    $("#mover").addEventListener("click", unirSubcategorias);
     $("#nueva-categoria").addEventListener("click", nuevaCategoria);
     $("#nuevo-medio").addEventListener("click", nuevoMedio);
 
