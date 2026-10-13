@@ -75,29 +75,60 @@ const COPIA = (() => {
     },
 
     /**
-     * Descarga la copia como archivo.
+     * Guarda la copia.
+     *
+     * En el teléfono abre el menú de compartir de Android con el archivo
+     * ya preparado: se elige «Drive» y la carpeta, y queda guardada. Si
+     * el dispositivo no puede compartir archivos (ordenador), se
+     * descarga como antes.
+     *
+     * Devuelve { total, via } o null si la persona canceló.
      */
     async exportar() {
 
       const copia = await this.construir();
       const texto = JSON.stringify(copia, null, 2);
+      const nombre = nombreArchivo();
 
-      const enlace = document.createElement("a");
-      const url = URL.createObjectURL(
-        new Blob([texto], { type: "application/json" })
-      );
+      let via = "descarga";
 
-      enlace.href = url;
-      enlace.download = nombreArchivo();
-      document.body.appendChild(enlace);
-      enlace.click();
-      document.body.removeChild(enlace);
+      try {
 
-      URL.revokeObjectURL(url);
+        const archivo = new File([texto], nombre, { type: "application/json" });
+
+        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+          await navigator.share({
+            files: [archivo],
+            title: "Copia de Finanzas",
+          });
+          via = "compartir";
+        }
+
+      } catch (error) {
+        // Cerrar el menú sin elegir nada no es un fallo: no se da por hecha.
+        if (error && error.name === "AbortError") return null;
+        via = "descarga";
+      }
+
+      if (via === "descarga") {
+
+        const enlace = document.createElement("a");
+        const url = URL.createObjectURL(
+          new Blob([texto], { type: "application/json" })
+        );
+
+        enlace.href = url;
+        enlace.download = nombre;
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+
+        URL.revokeObjectURL(url);
+      }
 
       await DATOS.guardarAjuste("ultima_copia", new Date().toISOString());
 
-      return copia.movimientos.length;
+      return { total: copia.movimientos.length, via };
     },
 
     /**

@@ -18,6 +18,8 @@
     subcategoriasPorId: new Map(),
     mediosPorId: new Map(),
     editando: null,
+    presupuestos: {},
+    ignorados: [],
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -64,6 +66,31 @@
 
     clearTimeout(avisar._temporizador);
     avisar._temporizador = setTimeout(() => { aviso.hidden = true; }, 2800);
+  }
+
+  /**
+   * Aviso con un botón (por ejemplo «Deshacer»). Dura más para dar
+   * tiempo a reaccionar.
+   */
+  function avisarConAccion(mensaje, etiqueta, accion) {
+
+    const aviso = $("#aviso");
+
+    aviso.className = "aviso";
+    aviso.textContent = mensaje;
+
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.textContent = etiqueta;
+    boton.addEventListener("click", async () => {
+      aviso.hidden = true;
+      await accion();
+    });
+    aviso.appendChild(boton);
+    aviso.hidden = false;
+
+    clearTimeout(avisar._temporizador);
+    avisar._temporizador = setTimeout(() => { aviso.hidden = true; }, 5500);
   }
 
   // ------------------------------------------------------------------
@@ -148,9 +175,12 @@
 
     estado.todos = await DATOS.movimientos();
     estado.delMes = estado.todos.filter(delMesActual);
+    estado.presupuestos = await DATOS.ajuste("presupuestos", {});
+    estado.ignorados = await DATOS.ajuste("recurrentes_ignorados", []);
 
     pintarResumen();
     pintarLista();
+    await pintarAvisos();
   }
 
   function pintarResumen() {
@@ -231,6 +261,14 @@
 
     const signo = mov.tipo === "gasto" ? "−" : "+";
 
+    const envoltura = document.createElement("div");
+    envoltura.className = "deslizable";
+    envoltura.innerHTML = `
+      <div class="deslizable__fondo" aria-hidden="true">
+        <span class="acc acc--editar">Editar</span>
+        <span class="acc acc--borrar">Eliminar</span>
+      </div>`;
+
     const fila = document.createElement("button");
 
     fila.type = "button";
@@ -253,9 +291,239 @@
 
     fila.querySelector(".mov__meta").textContent = meta;
 
-    fila.addEventListener("click", () => abrirHoja(mov));
+    envoltura.appendChild(fila);
+    activarDeslizar(envoltura, fila, mov);
 
-    return fila;
+    return envoltura;
+  }
+
+  // ------------------------------------------------------------------
+  // Deslizar una fila: a la derecha edita, a la izquierda elimina.
+  //
+  // La fila sigue al dedo 1:1; pasado el límite se frena como una goma;
+  // al soltar se proyecta hacia dónde iba (velocidad) y vuelve con un
+  // pequeño rebote si no se confirmó.
+  // ------------------------------------------------------------------
+
+  function activarDeslizar(envoltura, fila, mov) {
+
+    const UMBRAL = 96;     // distancia para confirmar
+    const LIBRE = 120;     // hasta aquí sigue 1:1
+    const ANCHO = 300;
+
+    let x0 = 0, y0 = 0, dx = 0;
+    let activo = false, decidido = false, arrastrando = false, huboArrastre = false;
+    let ultimaX = 0, ultimoT = 0, velocidad = 0, avisoHecho = false;
+
+    // Más allá del límite: resistencia progresiva (efecto goma).
+    function goma(x) {
+      const abs = Math.abs(x);
+      if (abs <= LIBRE) return x;
+      const exceso = abs - LIBRE;
+      const f = (exceso * ANCHO * 0.55) / (ANCHO + 0.55 * exceso);
+      return Math.sign(x) * (LIBRE + f);
+    }
+
+    // Dónde acabaría con la inercia del gesto.
+    function proyectar(v) {
+      const d = 0.998;
+      return ((v / 1000) * d) / (1 - d);
+    }
+
+    envoltura.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      activo = true; decidido = false; arrastrando = false;
+      x0 = e.clientX; y0 = e.clientY; dx = 0;
+      ultimaX = e.clientX; ultimoT = e.timeStamp; velocidad = 0; avisoHecho = false;
+      fila.style.transition = "none";
+    });
+
+    envoltura.addEventListener("pointermove", (e) => {
+
+      if (!activo) return;
+
+      const mx = e.clientX - x0;
+      const my = e.clientY - y0;
+
+      if (!decidido) {
+        if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+        decidido = true;
+        arrastrando = Math.abs(mx) > Math.abs(my);
+        if (arrastrando) {
+          envoltura.setPointerCapture(e.pointerId);
+          huboArrastre = true;
+        } else {
+          activo = false;
+          return;
+        }
+      }
+
+      dx = mx;
+      const mover = goma(dx);
+      fila.style.transform = `translateX(${mover}px)`;
+      envoltura.dataset.lado = dx > 0 ? "editar" : "borrar";
+
+      const listo = Math.abs(dx) >= UMBRAL;
+      envoltura.classList.toggle("deslizable--listo", listo);
+      if (listo && !avisoHecho) {
+        avisoHecho = true;
+        if (navigator.vibrate) navigator.vibrate(12);
+      }
+      if (!listo) avisoHecho = false;
+
+      const dt = e.timeStamp - ultimoT;
+      if (dt > 0) velocidad = ((e.clientX - ultimaX) / dt) * 1000;
+      ultimaX = e.clientX; ultimoT = e.timeStamp;
+    });
+
+    function soltar() {
+
+      if (!activo && !arrastrando) return;
+      activo = false;
+
+      if (!arrastrando) return;
+      arrastrando = false;
+
+      const final = dx + proyectar(velocidad);
+
+      // Vuelve a su sitio con un rebote suave.
+      fila.style.transition = "transform .5s cubic-bezier(.3,1.45,.5,1)";
+      fila.style.transform = "";
+      envoltura.classList.remove("deslizable--listo");
+      setTimeout(() => { delete envoltura.dataset.lado; }, 300);
+
+      if (final > UMBRAL * 1.15) {
+        abrirHoja(mov);
+      } else if (final < -UMBRAL * 1.15) {
+        eliminarConDeshacer(mov, envoltura);
+      }
+
+      setTimeout(() => { huboArrastre = false; }, 60);
+    }
+
+    envoltura.addEventListener("pointerup", soltar);
+    envoltura.addEventListener("pointercancel", soltar);
+
+    // Un arrastre no debe contar como toque.
+    fila.addEventListener("click", (e) => {
+      if (huboArrastre) {
+        e.preventDefault();
+        return;
+      }
+      abrirHoja(mov);
+    });
+  }
+
+  async function eliminarConDeshacer(mov, envoltura) {
+
+    envoltura.style.height = `${envoltura.offsetHeight}px`;
+    envoltura.getBoundingClientRect();
+    envoltura.classList.add("quitando");
+
+    await DATOS.eliminar(mov.uuid);
+    await new Promise((r) => setTimeout(r, 280));
+    await refrescar();
+
+    avisarConAccion("Movimiento eliminado", "Deshacer", async () => {
+      await DATOS.guardar(mov);
+      await refrescar();
+      avisar("Restaurado");
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Avisos al inicio: recurrentes pendientes y copia de seguridad
+  // ------------------------------------------------------------------
+
+  function nombreRecurrente(r) {
+    const sub = estado.subcategoriasPorId.get(r.subcategoria_id);
+    return r.descripcion || (sub ? sub.nombre : "Movimiento");
+  }
+
+  async function pintarAvisos() {
+
+    const zona = $("#avisos-inicio");
+    zona.innerHTML = "";
+
+    // --- Copia de seguridad ---------------------------------------
+    const ultima = await DATOS.ajuste("ultima_copia");
+    const callarHasta = await DATOS.ajuste("copia_aviso_hasta", 0);
+    const dias = ultima
+      ? Math.floor((Date.now() - new Date(ultima).getTime()) / 86400000)
+      : null;
+
+    if (estado.todos.length >= 10 && Date.now() > callarHasta && (dias === null || dias >= 7)) {
+
+      const tira = document.createElement("div");
+      tira.className = "tira";
+      tira.innerHTML = `
+        <p class="tira__titulo"></p>
+        <div class="tira__acciones">
+          <button type="button" class="tira__boton tira__boton--si">Guardar en Drive</button>
+          <button type="button" class="tira__boton tira__boton--no">Más tarde</button>
+        </div>`;
+      tira.querySelector(".tira__titulo").textContent = dias === null
+        ? "Aún no has hecho ninguna copia. Tus datos solo viven en este teléfono."
+        : `Hace ${dias} días que no haces copia de seguridad.`;
+
+      tira.querySelector(".tira__boton--si").addEventListener("click", async () => {
+        await exportar();
+        await pintarAvisos();
+      });
+      tira.querySelector(".tira__boton--no").addEventListener("click", async () => {
+        await DATOS.guardarAjuste("copia_aviso_hasta", Date.now() + 86400000);
+        await pintarAvisos();
+      });
+
+      zona.appendChild(tira);
+    }
+
+    // --- Recurrentes que faltan este mes --------------------------
+    const hoy = new Date();
+    if (estado.mes.getFullYear() !== hoy.getFullYear() || estado.mes.getMonth() !== hoy.getMonth()) {
+      return;
+    }
+
+    const pendientes = INTEL.recurrentes(estado.todos, estado.mes, estado.ignorados)
+      .filter((r) => !r.hecho && !r.ignorado);
+
+    if (!pendientes.length) return;
+
+    const tira = document.createElement("div");
+    tira.className = "tira";
+    tira.innerHTML = '<p class="tira__titulo">Recurrentes que aún no has registrado este mes</p><div class="chips"></div>';
+    const chips = tira.querySelector(".chips");
+
+    pendientes.forEach((r) => {
+
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.innerHTML = '<button type="button" class="chip__texto"></button><button type="button" class="chip__quitar" aria-label="No recordar más">×</button>';
+
+      const texto = chip.querySelector(".chip__texto");
+      texto.textContent = nombreRecurrente(r);
+      const monto = document.createElement("b");
+      monto.textContent = euros.format(r.monto);
+      texto.appendChild(monto);
+
+      texto.addEventListener("click", () => {
+        const dia = Math.min(r.dia, hoy.getDate());
+        abrirHoja(null, {
+          ...r,
+          fecha: iso(new Date(hoy.getFullYear(), hoy.getMonth(), dia)),
+        });
+      });
+
+      chip.querySelector(".chip__quitar").addEventListener("click", async () => {
+        estado.ignorados = [...estado.ignorados, r.key];
+        await DATOS.guardarAjuste("recurrentes_ignorados", estado.ignorados);
+        await pintarAvisos();
+      });
+
+      chips.appendChild(chip);
+    });
+
+    zona.appendChild(tira);
   }
 
   // ------------------------------------------------------------------
@@ -275,7 +543,7 @@
     });
   }
 
-  function abrirHoja(movimiento = null) {
+  function abrirHoja(movimiento = null, borrador = null) {
 
     estado.editando = movimiento;
 
@@ -294,6 +562,15 @@
       $("#medio-pago").value = movimiento.medio_pago_id || "";
       $("#fecha").value = movimiento.fecha;
       $("#comentario").value = movimiento.comentario || "";
+    } else if (borrador) {
+      // Recurrente: se rellena con el último importe y queda como nuevo.
+      $("#form-movimiento").reset();
+      seleccionarTipo(borrador.tipo);
+      $("#monto").value = String(borrador.monto).replace(".", ",");
+      $("#descripcion").value = borrador.descripcion || "";
+      $("#subcategoria").value = borrador.subcategoria_id;
+      $("#medio-pago").value = borrador.medio_pago_id || "";
+      $("#fecha").value = borrador.fecha;
     } else {
       seleccionarTipo("gasto");
       $("#form-movimiento").reset();
@@ -303,7 +580,7 @@
     $("#velo").hidden = false;
     $("#hoja").hidden = false;
 
-    if (!movimiento) {
+    if (!movimiento && !borrador) {
       setTimeout(() => $("#monto").focus(), 320);
     }
   }
@@ -351,7 +628,6 @@
     cerrarHoja();
     avisar(editaba ? "Actualizado" : "Guardado");
     await refrescar();
-    await recordarCopia();
   }
 
   async function eliminar() {
@@ -384,6 +660,8 @@
       mes: estado.mes,
       categorias: estado.categoriasPorId,
       subcategorias: estado.subcategoriasPorId,
+      presupuestos: estado.presupuestos,
+      ignorados: estado.ignorados,
     });
   }
 
@@ -407,6 +685,8 @@
   async function pintarAjustes() {
 
     await pintarEstadoCopia();
+    await pintarPresupuestos();
+    pintarRecurrentes();
 
     // --- Categorías con sus subcategorías -------------------------
 
@@ -505,6 +785,85 @@
 
     $("#sobre").textContent =
       `${estado.todos.length} movimientos guardados en este dispositivo.`;
+  }
+
+  async function pintarPresupuestos() {
+
+    const contenedor = $("#lista-presupuestos");
+    contenedor.innerHTML = "";
+
+    estado.categorias.filter((c) => c.tipo === "gasto").forEach((categoria) => {
+
+      const tope = Number(estado.presupuestos[categoria.id]) || 0;
+
+      const fila = document.createElement("button");
+      fila.type = "button";
+      fila.className = "fila-ajuste";
+      fila.innerHTML = '<span class="fila-ajuste__nombre"></span><span class="fila-ajuste__valor"></span>';
+      fila.querySelector(".fila-ajuste__nombre").textContent = categoria.nombre;
+
+      const valor = fila.querySelector(".fila-ajuste__valor");
+      valor.textContent = tope ? euros.format(tope) : "Sin tope";
+      if (!tope) valor.classList.add("fila-ajuste__valor--apagado");
+
+      fila.addEventListener("click", async () => {
+
+        const respuesta = prompt(
+          `Tope mensual para ${categoria.nombre}\n(vacío o 0 = sin tope):`,
+          tope ? String(tope).replace(".", ",") : ""
+        );
+
+        if (respuesta === null) return;
+
+        const nuevo = Number(normalizarMonto(respuesta)) || 0;
+        const topes = { ...estado.presupuestos };
+
+        if (nuevo > 0) topes[categoria.id] = nuevo;
+        else delete topes[categoria.id];
+
+        estado.presupuestos = topes;
+        await DATOS.guardarAjuste("presupuestos", topes);
+        await pintarPresupuestos();
+      });
+
+      contenedor.appendChild(fila);
+    });
+  }
+
+  function pintarRecurrentes() {
+
+    const contenedor = $("#lista-recurrentes");
+    contenedor.innerHTML = "";
+
+    const lista = INTEL.recurrentes(estado.todos, new Date(), estado.ignorados);
+
+    if (!lista.length) {
+      contenedor.innerHTML =
+        '<p class="bloque__nota">Aún no hay movimientos que se repitan cada mes.</p>';
+      return;
+    }
+
+    lista.forEach((r) => {
+
+      const fila = document.createElement("button");
+      fila.type = "button";
+      fila.className = "fila-ajuste";
+      fila.innerHTML = '<span class="fila-ajuste__nombre"></span><span class="fila-ajuste__valor"></span><span class="interruptor"></span>';
+      fila.querySelector(".fila-ajuste__nombre").textContent = nombreRecurrente(r);
+      fila.querySelector(".fila-ajuste__valor").textContent =
+        `${euros.format(r.monto)} · día ${r.dia}`;
+      fila.querySelector(".interruptor").classList.toggle("interruptor--on", !r.ignorado);
+
+      fila.addEventListener("click", async () => {
+        estado.ignorados = r.ignorado
+          ? estado.ignorados.filter((k) => k !== r.key)
+          : [...estado.ignorados, r.key];
+        await DATOS.guardarAjuste("recurrentes_ignorados", estado.ignorados);
+        pintarRecurrentes();
+      });
+
+      contenedor.appendChild(fila);
+    });
   }
 
   async function pintarEstadoCopia() {
@@ -620,8 +979,14 @@
   async function exportar() {
 
     try {
-      const total = await COPIA.exportar();
-      avisar(`Copia descargada · ${total} movimientos`);
+      const resultado = await COPIA.exportar();
+
+      // null = cerró el menú de compartir sin guardar.
+      if (!resultado) return;
+
+      avisar(resultado.via === "compartir"
+        ? `Copia enviada · ${resultado.total} movimientos`
+        : `Copia descargada · ${resultado.total} movimientos`);
       await pintarEstadoCopia();
     } catch (error) {
       avisar("No se pudo crear la copia", true);
@@ -693,27 +1058,6 @@
       avisar(error.message, true);
     } finally {
       evento.target.value = "";
-    }
-  }
-
-  /**
-   * Recuerda hacer copia cada cierto tiempo, sin ser pesado.
-   */
-  async function recordarCopia() {
-
-    const ultima = await DATOS.ajuste("ultima_copia");
-
-    if (!ultima) {
-      if (estado.todos.length === 15) {
-        avisar("Ve a ajustes y descarga una copia", true);
-      }
-      return;
-    }
-
-    const dias = (Date.now() - new Date(ultima).getTime()) / 86400000;
-
-    if (dias > 21) {
-      avisar("Hace semanas que no haces copia", true);
     }
   }
 
