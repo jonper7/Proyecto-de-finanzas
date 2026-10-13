@@ -82,7 +82,7 @@ const COPIA = (() => {
      * el dispositivo no puede compartir archivos (ordenador), se
      * descarga como antes.
      *
-     * Devuelve { total, via } o null si la persona canceló.
+     * Devuelve { total, via, motivo } o null si la persona canceló.
      */
     async exportar() {
 
@@ -91,23 +91,33 @@ const COPIA = (() => {
       const nombre = nombreArchivo();
 
       let via = "descarga";
+      let motivo = "";
 
-      try {
+      // Se prueba primero como JSON; algunos navegadores solo aceptan
+      // ciertos tipos de archivo, así que después se intenta como texto.
+      const intentos = [
+        new File([texto], nombre, { type: "application/json" }),
+        new File([texto], nombre, { type: "text/plain" }),
+      ];
 
-        const archivo = new File([texto], nombre, { type: "application/json" });
+      if (!navigator.share || !navigator.canShare) {
+        motivo = "Este navegador no puede compartir archivos";
+      } else {
 
-        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-          await navigator.share({
-            files: [archivo],
-            title: "Copia de Finanzas",
-          });
-          via = "compartir";
+        const archivo = intentos.find((f) => navigator.canShare({ files: [f] }));
+
+        if (!archivo) {
+          motivo = "El teléfono no acepta compartir este tipo de archivo";
+        } else {
+          try {
+            await navigator.share({ files: [archivo], title: "Copia de Finanzas" });
+            via = "compartir";
+          } catch (error) {
+            // Cerrar el menú sin elegir nada no es un fallo: no se da por hecha.
+            if (error && error.name === "AbortError") return null;
+            motivo = `No se pudo abrir el menú (${(error && error.name) || "error"})`;
+          }
         }
-
-      } catch (error) {
-        // Cerrar el menú sin elegir nada no es un fallo: no se da por hecha.
-        if (error && error.name === "AbortError") return null;
-        via = "descarga";
       }
 
       if (via === "descarga") {
@@ -128,7 +138,7 @@ const COPIA = (() => {
 
       await DATOS.guardarAjuste("ultima_copia", new Date().toISOString());
 
-      return { total: copia.movimientos.length, via };
+      return { total: copia.movimientos.length, via, motivo };
     },
 
     /**

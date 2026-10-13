@@ -984,9 +984,17 @@
       // null = cerró el menú de compartir sin guardar.
       if (!resultado) return;
 
-      avisar(resultado.via === "compartir"
-        ? `Copia enviada · ${resultado.total} movimientos`
-        : `Copia descargada · ${resultado.total} movimientos`);
+      if (resultado.via === "compartir") {
+        avisar(`Copia enviada · ${resultado.total} movimientos`);
+      } else {
+        // Sin menú de compartir el archivo queda en Descargas: se explica
+        // por qué, para que no parezca que no pasó nada.
+        alert(
+          `La copia se descargó en la carpeta Descargas (${resultado.total} movimientos).\n\n` +
+          `Motivo: ${resultado.motivo}.\n\n` +
+          "Súbela a Drive desde la app Archivos o Drive."
+        );
+      }
       await pintarEstadoCopia();
     } catch (error) {
       avisar("No se pudo crear la copia", true);
