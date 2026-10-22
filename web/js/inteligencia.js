@@ -130,9 +130,8 @@ const INTEL = (() => {
     let esFijo;
 
     if (definidos.length) {
-      const claves = new Set(definidos.map(claveDeFijo));
       const ids = new Set(definidos.map((f) => f.id));
-      esFijo = (m) => (m.fijo_id && ids.has(m.fijo_id)) || claves.has(clave(m));
+      esFijo = (m) => (m.fijo_id ? ids.has(m.fijo_id) : definidos.some((f) => coincideFijo(m, f)));
       fijosPend = estadoFijos(todos, mes, definidos)
         .filter((e) => !e.pagado)
         .map((e) => ({ monto: e.fijo.monto, nombre: e.fijo.nombre, fijo: e.fijo }));
@@ -196,6 +195,31 @@ const INTEL = (() => {
   }
 
   /**
+   * ¿Este movimiento corresponde a este gasto fijo?
+   *
+   * Misma subcategoría y tipo, y además: el mismo nombre (o uno contenido
+   * en el otro: «Claude» y «Claude IA»), o sin descripción pero con un
+   * importe parecido (±20%).
+   */
+  function coincideFijo(m, fijo) {
+
+    if (m.fijo_id) return m.fijo_id === fijo.id;
+    if (m.tipo !== fijo.tipo || m.subcategoria_id !== fijo.subcategoria_id) return false;
+
+    const a = normalizar(m.descripcion);
+    const b = normalizar(fijo.nombre);
+
+    if (a && b && (a === b || a.includes(b) || b.includes(a))) return true;
+
+    if (!a) {
+      const esperado = num(fijo.monto);
+      return esperado > 0 && Math.abs(num(m.monto) - esperado) <= esperado * 0.2;
+    }
+
+    return false;
+  }
+
+  /**
    * Para cada fijo, si ya se registró en el mes indicado.
    * Se reconoce por el vínculo directo (fijo_id) o, en movimientos
    * antiguos, por la misma subcategoría y el mismo nombre.
@@ -206,10 +230,9 @@ const INTEL = (() => {
     const delMes = todos.filter((m) => indiceMes(m.fecha) === idx);
 
     return fijos.map((fijo) => {
-      const k = claveDeFijo(fijo);
       const movimiento =
         delMes.find((m) => m.fijo_id === fijo.id) ||
-        delMes.find((m) => !m.fijo_id && clave(m) === k) ||
+        delMes.find((m) => !m.fijo_id && coincideFijo(m, fijo)) ||
         null;
       return { fijo, pagado: Boolean(movimiento), movimiento };
     });
@@ -229,6 +252,6 @@ const INTEL = (() => {
       .filter((r) => !cubiertos.has(`${r.tipo}|${r.subcategoria_id}|${normalizar(r.descripcion)}`));
   }
 
-  return { recurrentes, proyeccion, estadoFijos, sugerencias, claveDeFijo, clave, normalizar };
+  return { recurrentes, proyeccion, estadoFijos, sugerencias, coincideFijo, claveDeFijo, clave, normalizar };
 
 })();
