@@ -94,14 +94,26 @@ base de datos.
 
 ```
 web/
-├── index.html          pantallas de movimientos y ajustes
-├── manifest.json       datos de instalación
-├── sw.js               service worker (permite abrir sin conexión)
+├── index.html            las cinco pestañas, el formulario y los diálogos
+├── manifest.json         datos de instalación
+├── sw.js                 service worker (permite abrir sin conexión)
 ├── css/estilos.css
 ├── js/
-│   ├── datos.js        almacén local (IndexedDB) y catálogo inicial
-│   ├── copia.js        exportar e importar JSON
-│   └── app.js          interfaz
+│   ├── config.js         moneda y formatos
+│   ├── datos.js          almacén local (IndexedDB) y catálogo inicial
+│   ├── copia.js          copia JSON (movimientos, fijos y presupuestos)
+│   ├── importar_csv.js   importación del histórico en CSV
+│   ├── inteligencia.js   gastos fijos, sugerencias y proyección
+│   ├── resumen.js        gráficas (SVG propio, sin librerías)
+│   ├── nucleo.js         estado compartido y enrutador de pestañas
+│   ├── dialogos.js       hojas de diálogo (sustituyen a prompt y confirm)
+│   ├── hoja_mov.js       formulario de movimiento
+│   ├── vista_inicio.js        pestaña Inicio
+│   ├── vista_movimientos.js   pestaña Movimientos
+│   ├── vista_analisis.js      pestaña Análisis
+│   ├── vista_planificar.js    pestaña Planificar (fijos y presupuestos)
+│   ├── vista_ajustes.js       pestaña Ajustes (categorías, copia...)
+│   └── main.js           arranque
 └── iconos/
 ```
 

@@ -20,115 +20,50 @@
 </head>
 <body>
 
-<div class="grano" aria-hidden="true"></div>
-
 <!-- ================================================================
-     Movimientos
+     Inicio
      ================================================================ -->
-<main id="pantalla-app" class="app">
+<main id="vista-inicio" class="vista">
 
-  <header class="cabecera">
-
-    <div class="mes">
-      <button id="mes-anterior" class="mes__flecha" aria-label="Mes anterior">‹</button>
-      <h2 id="mes-actual" class="mes__nombre"></h2>
-      <button id="mes-siguiente" class="mes__flecha" aria-label="Mes siguiente">›</button>
+  <header class="vista__cab">
+    <div>
+      <p class="vista__sup">Resumen</p>
+      <h1 class="vista__titulo">Inicio</h1>
     </div>
-
-    <button id="abrir-resumen" class="salir" title="Resumen" aria-label="Resumen"
-            style="margin-right:8px">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-           stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
-        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>
-      </svg>
-    </button>
-
-    <button id="abrir-ajustes" class="salir" title="Ajustes" aria-label="Ajustes">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-           stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/>
-      </svg>
-    </button>
-
+    <div class="mes mes--pastilla">
+        <button type="button" class="mes__flecha js-mes-ant" aria-label="Mes anterior">‹</button>
+        <h2 class="mes__nombre" id="inicio-mes"></h2>
+        <button type="button" class="mes__flecha js-mes-sig" aria-label="Mes siguiente">›</button>
+      </div>
   </header>
 
-  <section class="balance">
-
-    <p class="balance__etiqueta">Balance del mes</p>
-    <p id="balance-total" class="balance__cifra">—</p>
-
-    <div class="balance__detalle">
-      <div class="balance__parte">
-        <span class="punto punto--ingreso"></span>
-        <span class="balance__nombre">Ingresos</span>
-        <span id="balance-ingresos" class="balance__valor">—</span>
-      </div>
-      <div class="balance__parte">
-        <span class="punto punto--gasto"></span>
-        <span class="balance__nombre">Gastos</span>
-        <span id="balance-gastos" class="balance__valor">—</span>
-      </div>
-    </div>
-
+  <section class="hero" aria-label="Balance del mes">
+    <p class="hero__etiqueta">Balance del mes</p>
+    <p class="hero__cifra" id="kpi-balance">—</p>
+    <p class="hero__pie" id="kpi-balance-pie">—</p>
+    <div class="hero__spark" id="hero-spark"></div>
   </section>
 
-  <div id="avisos-inicio"></div>
-
-  <nav class="filtros" aria-label="Filtrar por tipo">
-    <button class="filtro filtro--activo" data-tipo="">Todo</button>
-    <button class="filtro" data-tipo="gasto">Gastos</button>
-    <button class="filtro" data-tipo="ingreso">Ingresos</button>
-  </nav>
-
-  <section id="lista" class="lista" aria-live="polite"></section>
-
-  <button id="nuevo" class="fab" aria-label="Nuevo movimiento">
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-         stroke="currentColor" stroke-width="2" stroke-linecap="round">
-      <path d="M12 5v14M5 12h14"/>
-    </svg>
-  </button>
-
-</main>
-
-
-<!-- ================================================================
-     Resumen
-     ================================================================ -->
-<main id="pantalla-resumen" class="app app--ancha" hidden>
-
-  <header class="cabecera">
-    <button id="volver-resumen" class="mes__flecha" aria-label="Volver">‹</button>
-    <div class="mes">
-      <button id="res-anterior" class="mes__flecha" aria-label="Mes anterior">‹</button>
-      <h2 id="res-mes" class="mes__nombre"></h2>
-      <button id="res-siguiente" class="mes__flecha" aria-label="Mes siguiente">›</button>
-    </div>
-    <span style="flex:1"></span>
-  </header>
-
-  <div class="tarjetas">
-
+  <div class="tarjetas tarjetas--dos">
     <div class="tarjeta tarjeta--ingreso">
       <p class="tarjeta__etiqueta">Ingresos</p>
       <p class="tarjeta__cifra" id="kpi-ingresos">—</p>
       <p class="tarjeta__pie" id="kpi-ingresos-n">—</p>
     </div>
-
     <div class="tarjeta tarjeta--gasto">
       <p class="tarjeta__etiqueta">Gastos</p>
       <p class="tarjeta__cifra" id="kpi-gastos">—</p>
       <p class="tarjeta__pie" id="kpi-gastos-n">—</p>
     </div>
-
-    <div class="tarjeta tarjeta--balance">
-      <p class="tarjeta__etiqueta">Balance</p>
-      <p class="tarjeta__cifra" id="kpi-balance">—</p>
-      <p class="tarjeta__pie" id="kpi-balance-pie">—</p>
-    </div>
-
   </div>
+
+  <div id="avisos-inicio"></div>
+
+  <section class="bloque">
+    <h3 class="bloque__titulo">En qué se va el dinero</h3>
+    <p class="bloque__nota">Toca una categoría para ver sus subcategorías.</p>
+    <div id="por-categoria"></div>
+  </section>
 
   <section class="bloque">
     <h3 class="bloque__titulo">Proyección del mes</h3>
@@ -137,27 +72,75 @@
   </section>
 
   <section class="bloque">
-    <h3 class="bloque__titulo">Presupuestos</h3>
-    <p class="bloque__nota">Cuánto llevas gastado frente al tope de cada categoría.</p>
-    <div id="presupuestos"></div>
+    <h3 class="bloque__titulo">Presupuestos en vigilancia</h3>
+    <div id="pres-alertas"></div>
   </section>
 
-  <section class="bloque">
-    <h3 class="bloque__titulo">En qué se va el dinero</h3>
-    <p class="bloque__nota">Gasto del mes por categoría.</p>
-    <div id="por-categoria"></div>
+</main>
+
+
+<!-- ================================================================
+     Movimientos
+     ================================================================ -->
+<main id="vista-movimientos" class="vista" hidden>
+
+  <header class="vista__cab">
+    <div>
+      <p class="vista__sup">Registro</p>
+      <h1 class="vista__titulo">Movimientos</h1>
+    </div>
+  </header>
+
+  <div class="barra-filtros">
+    <div class="fichas" id="filtro-anios" aria-label="Año"></div>
+    <div class="fichas fichas--meses" id="filtro-meses" aria-label="Mes"></div>
+    <nav class="filtros" aria-label="Filtrar por tipo">
+      <button type="button" class="filtro filtro--activo" data-tipo="">Todo</button>
+      <button type="button" class="filtro" data-tipo="gasto">Gastos</button>
+      <button type="button" class="filtro" data-tipo="ingreso">Ingresos</button>
+    </nav>
+  </div>
+
+  <section class="bloque" id="bloque-calendario">
+    <button type="button" class="plegable" id="cal-toggle" aria-expanded="true">
+      <span>
+        <span class="bloque__titulo">Calendario de gastos</span>
+        <span class="bloque__nota">Más intenso, más gastaste ese día. Toca uno para filtrar la lista.</span>
+      </span>
+      <span class="plegable__flecha" aria-hidden="true">⌃</span>
+    </button>
+    <div id="calendario"></div>
   </section>
+
+  <div class="resumen-lista" id="resumen-lista"></div>
+  <button type="button" class="ficha ficha--activa ficha--dia" id="filtro-dia" hidden></button>
+
+  <section id="lista" class="lista" aria-live="polite"></section>
+
+</main>
+
+
+<!-- ================================================================
+     Análisis
+     ================================================================ -->
+<main id="vista-analisis" class="vista" hidden>
+
+  <header class="vista__cab">
+    <div>
+      <p class="vista__sup">Gráficas</p>
+      <h1 class="vista__titulo">Análisis</h1>
+    </div>
+    <div class="mes mes--pastilla">
+        <button type="button" class="mes__flecha js-mes-ant" aria-label="Mes anterior">‹</button>
+        <h2 class="mes__nombre" id="analisis-mes"></h2>
+        <button type="button" class="mes__flecha js-mes-sig" aria-label="Mes siguiente">›</button>
+      </div>
+  </header>
 
   <section class="bloque">
     <h3 class="bloque__titulo">Frente al mes anterior</h3>
     <p class="bloque__nota">Gasto por categoría, este mes contra el anterior.</p>
     <div id="comparativa"></div>
-  </section>
-
-  <section class="bloque">
-    <h3 class="bloque__titulo">Calendario de gastos</h3>
-    <p class="bloque__nota">Más intenso, más gastaste ese día. Toca un día para ver el detalle.</p>
-    <div id="calendario"></div>
   </section>
 
   <section class="bloque">
@@ -188,14 +171,84 @@
 
 
 <!-- ================================================================
+     Planificar: gastos fijos y presupuestos
+     ================================================================ -->
+<main id="vista-planificar" class="vista" hidden>
+
+  <header class="vista__cab">
+    <div>
+      <p class="vista__sup">Organiza tu mes</p>
+      <h1 class="vista__titulo">Planificar</h1>
+    </div>
+    <button type="button" class="mini mini--principal mini--grande" id="nuevo-fijo">+ Nuevo fijo</button>
+  </header>
+
+  <nav class="segmentos" id="plan-segmentos" aria-label="Sección">
+    <button type="button" class="segmento--activo" data-sub="fijos">Gastos fijos</button>
+    <button type="button" data-sub="presupuestos">Presupuestos</button>
+  </nav>
+
+  <div id="plan-fijos">
+
+    <div class="mes mes--pastilla mes--centrada">
+      <button type="button" class="mes__flecha js-mes-ant" aria-label="Mes anterior">‹</button>
+      <h2 class="mes__nombre" id="fijos-mes"></h2>
+      <button type="button" class="mes__flecha js-mes-sig" aria-label="Mes siguiente">›</button>
+    </div>
+
+    <section class="bloque bloque--hero" id="fijos-resumen" hidden>
+      <p class="proy__etiqueta">Fijos del mes</p>
+      <p class="proy__cifra" id="fijos-total">—</p>
+      <div class="proy__riel"><div class="proy__fill" id="fijos-progreso"></div></div>
+      <p class="proy__pie" style="margin-bottom:0"><span id="fijos-detalle"></span></p>
+    </section>
+
+    <div id="fijos-lista"></div>
+
+    <section class="bloque" id="fijos-sugeridos" hidden>
+      <h3 class="bloque__titulo">Sugeridos de tu historial</h3>
+      <p class="bloque__nota">Movimientos que se repiten cada mes. Añádelos como fijos o descártalos.</p>
+      <div id="sugeridos-lista"></div>
+    </section>
+
+  </div>
+
+  <div id="plan-presupuestos" hidden>
+
+    <div class="mes mes--pastilla mes--centrada">
+      <button type="button" class="mes__flecha js-mes-ant" aria-label="Mes anterior">‹</button>
+      <h2 class="mes__nombre" id="pres-mes"></h2>
+      <button type="button" class="mes__flecha js-mes-sig" aria-label="Mes siguiente">›</button>
+    </div>
+
+    <section class="bloque bloque--hero" id="pres-resumen" hidden>
+      <p class="proy__etiqueta">Presupuesto del mes</p>
+      <p class="proy__cifra" id="pres-total">—</p>
+      <div class="proy__riel"><div class="proy__fill" id="pres-progreso"></div></div>
+      <p class="proy__pie" style="margin-bottom:0"><span id="pres-detalle"></span></p>
+    </section>
+
+    <section class="bloque">
+      <h3 class="bloque__titulo">Tope por categoría</h3>
+      <p class="bloque__nota">Toca una categoría para fijar o cambiar su tope mensual.</p>
+      <div id="pres-lista"></div>
+    </section>
+
+  </div>
+
+</main>
+
+
+<!-- ================================================================
      Ajustes
      ================================================================ -->
-<main id="pantalla-ajustes" class="app" hidden>
+<main id="vista-ajustes" class="vista" hidden>
 
-  <header class="cabecera">
-    <button id="volver" class="mes__flecha" aria-label="Volver">‹</button>
-    <h2 class="mes__nombre" style="min-width:auto">Ajustes</h2>
-    <span style="flex:1"></span>
+  <header class="vista__cab">
+    <div>
+      <p class="vista__sup">Configuración</p>
+      <h1 class="vista__titulo">Ajustes</h1>
+    </div>
   </header>
 
   <section class="bloque">
@@ -206,7 +259,7 @@
       Tus datos están solo en este dispositivo.
     </p>
 
-    <button id="exportar" class="boton boton--principal">
+    <button type="button" id="exportar" class="boton boton--principal">
       Guardar copia en Drive
     </button>
 
@@ -215,8 +268,7 @@
       RegistrosFinancieros.
     </p>
 
-    <button id="elegir-archivo" class="boton boton--fantasma"
-            style="width:100%;margin:10px 0 0">
+    <button type="button" id="elegir-archivo" class="boton boton--secundario boton--ancho">
       Importar copias o CSV
     </button>
 
@@ -230,20 +282,20 @@
   </section>
 
   <section class="bloque">
-
     <h3 class="bloque__titulo">Categorías</h3>
-
-    <p class="bloque__nota">
-      Toca una para cambiarle el nombre.
-    </p>
-
+    <p class="bloque__nota">Toca una para ver sus subcategorías. Con el lápiz las editas y con la papelera las eliminas.</p>
     <div id="lista-categorias"></div>
-
-    <button id="nueva-categoria" class="boton boton--fantasma"
-            style="width:100%;margin:12px 0 0">
+    <button type="button" id="nueva-categoria" class="boton boton--secundario boton--ancho" style="margin-top:12px">
       Añadir categoría
     </button>
+  </section>
 
+  <section class="bloque">
+    <h3 class="bloque__titulo">Medios de pago</h3>
+    <div id="lista-medios"></div>
+    <button type="button" id="nuevo-medio" class="boton boton--secundario boton--ancho" style="margin-top:12px">
+      Añadir medio de pago
+    </button>
   </section>
 
   <section class="bloque">
@@ -265,36 +317,10 @@
       <select id="mover-destino"></select>
     </label>
 
-    <button id="mover" class="boton boton--fantasma"
-            style="width:100%;margin:4px 0 0">
+    <button type="button" id="mover" class="boton boton--secundario boton--ancho">
       Mover movimientos
     </button>
 
-  </section>
-
-  <section class="bloque">
-
-    <h3 class="bloque__titulo">Medios de pago</h3>
-
-    <div id="lista-medios"></div>
-
-    <button id="nuevo-medio" class="boton boton--fantasma"
-            style="width:100%;margin:12px 0 0">
-      Añadir medio de pago
-    </button>
-
-  </section>
-
-  <section class="bloque">
-    <h3 class="bloque__titulo">Presupuestos</h3>
-    <p class="bloque__nota">Toca una categoría para fijar su tope mensual.</p>
-    <div id="lista-presupuestos"></div>
-  </section>
-
-  <section class="bloque">
-    <h3 class="bloque__titulo">Gastos recurrentes</h3>
-    <p class="bloque__nota">Detectados en tu historial. Desactiva los que no quieras que te recuerde.</p>
-    <div id="lista-recurrentes"></div>
   </section>
 
   <section class="bloque">
@@ -306,7 +332,27 @@
 
 
 <!-- ================================================================
-     Formulario de movimiento
+     Navegación
+     ================================================================ -->
+<button type="button" id="nuevo" class="fab" aria-label="Nuevo movimiento">
+  <svg viewBox="0 0 24 24" width="26" height="26" fill="none"
+       stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+    <path d="M12 5v14M5 12h14"/>
+  </svg>
+</button>
+
+<nav class="tabbar" aria-label="Secciones">
+  <span class="tabbar__indicador" aria-hidden="true"></span>
+    <button type="button" class="tabbar__tab" data-vista="inicio" aria-label="Inicio"><span class="tabbar__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1v-9"/></svg></span><span class="tabbar__texto">Inicio</span></button>
+    <button type="button" class="tabbar__tab" data-vista="movimientos" aria-label="Movimientos"><span class="tabbar__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg></span><span class="tabbar__texto">Movimientos</span></button>
+    <button type="button" class="tabbar__tab" data-vista="analisis" aria-label="Análisis"><span class="tabbar__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-4 3 3 5-6"/></svg></span><span class="tabbar__texto">Análisis</span></button>
+    <button type="button" class="tabbar__tab" data-vista="planificar" aria-label="Planificar"><span class="tabbar__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5l2 2"/><path d="M20 4v5h-5"/><path d="M20 12a8 8 0 0 1-14 5l-2-2"/><path d="M4 20v-5h5"/></svg></span><span class="tabbar__texto">Planificar</span></button>
+    <button type="button" class="tabbar__tab" data-vista="ajustes" aria-label="Ajustes"><span class="tabbar__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/></svg></span><span class="tabbar__texto">Ajustes</span></button>
+</nav>
+
+
+<!-- ================================================================
+     Formulario de movimiento (hoja inferior)
      ================================================================ -->
 <div id="velo" class="velo" hidden></div>
 
@@ -380,13 +426,41 @@
 
 <div id="aviso" class="aviso" hidden></div>
 
+
+<!-- ================================================================
+     Diálogos de la aplicación
+     ================================================================ -->
+<div id="velo-dialogo" class="velo velo--dialogo" hidden></div>
+
+<section id="dialogo" class="hoja hoja--dialogo" hidden role="dialog" aria-modal="true" aria-labelledby="dialogo-titulo">
+  <form id="dialogo-form" class="hoja__form" novalidate>
+    <div class="hoja__asa" aria-hidden="true"></div>
+    <div class="hoja__cabecera">
+      <h3 id="dialogo-titulo" class="hoja__titulo"></h3>
+      <button type="button" id="dialogo-cerrar" class="hoja__cerrar" aria-label="Cerrar">×</button>
+    </div>
+    <p id="dialogo-mensaje" class="bloque__nota" hidden></p>
+    <div id="dialogo-campos"></div>
+    <p id="dialogo-error" class="error" hidden></p>
+    <div class="hoja__acciones" id="dialogo-acciones"></div>
+  </form>
+</section>
+
 <script src="js/config.js"></script>
 <script src="js/datos.js"></script>
 <script src="js/copia.js"></script>
 <script src="js/importar_csv.js"></script>
 <script src="js/inteligencia.js"></script>
 <script src="js/resumen.js"></script>
-<script src="js/app.js"></script>
+<script src="js/nucleo.js"></script>
+<script src="js/dialogos.js"></script>
+<script src="js/hoja_mov.js"></script>
+<script src="js/vista_inicio.js"></script>
+<script src="js/vista_movimientos.js"></script>
+<script src="js/vista_analisis.js"></script>
+<script src="js/vista_planificar.js"></script>
+<script src="js/vista_ajustes.js"></script>
+<script src="js/main.js"></script>
 
 <script>
   if ("serviceWorker" in navigator) {

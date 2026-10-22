@@ -9,7 +9,7 @@
 
 const COPIA = (() => {
 
-  const VERSION = 1;
+  const VERSION = 2;
 
   function nombreArchivo() {
 
@@ -31,17 +31,37 @@ const COPIA = (() => {
      */
     async construir() {
 
-      const [categorias, subcategorias, medios, movimientos] =
+      const [categorias, subcategorias, medios, movimientos, fijos, presupuestos] =
         await Promise.all([
           DATOS.catalogo("categorias"),
           DATOS.catalogo("subcategorias"),
           DATOS.catalogo("medios_pago"),
           DATOS.movimientos(),
+          DATOS.ajuste("fijos", []),
+          DATOS.ajuste("presupuestos", {}),
         ]);
 
       const categoriaPorId = new Map(categorias.map((c) => [c.id, c]));
       const subPorId = new Map(subcategorias.map((s) => [s.id, s]));
       const medioPorId = new Map(medios.map((m) => [m.id, m]));
+
+      // Nombres en vez de números: así la copia sirve en otro dispositivo.
+      const nombres = (subId, medioId) => {
+        const sub = subPorId.get(subId);
+        const categoria = sub ? categoriaPorId.get(sub.categoria_id) : null;
+        const medio = medioPorId.get(medioId);
+        return {
+          categoria: categoria ? categoria.nombre : null,
+          subcategoria: sub ? sub.nombre : null,
+          medio_pago: medio ? medio.nombre : null,
+        };
+      };
+
+      const topes = {};
+      Object.entries(presupuestos).forEach(([id, monto]) => {
+        const categoria = categoriaPorId.get(Number(id));
+        if (categoria) topes[categoria.nombre] = monto;
+      });
 
       return {
         aplicacion: "finanzas",
@@ -50,27 +70,27 @@ const COPIA = (() => {
         categorias,
         subcategorias,
         medios_pago: medios,
-        movimientos: movimientos.map((m) => {
-
-          const sub = subPorId.get(m.subcategoria_id);
-          const categoria = sub
-            ? categoriaPorId.get(sub.categoria_id)
-            : null;
-          const medio = medioPorId.get(m.medio_pago_id);
-
-          return {
-            uuid: m.uuid,
-            fecha: m.fecha,
-            monto: String(m.monto),
-            tipo: m.tipo,
-            categoria: categoria ? categoria.nombre : null,
-            subcategoria: sub ? sub.nombre : null,
-            medio_pago: medio ? medio.nombre : null,
-            descripcion: m.descripcion || null,
-            comentario: m.comentario || null,
-            actualizado: m.actualizado,
-          };
-        }),
+        movimientos: movimientos.map((m) => ({
+          uuid: m.uuid,
+          fecha: m.fecha,
+          monto: String(m.monto),
+          tipo: m.tipo,
+          ...nombres(m.subcategoria_id, m.medio_pago_id),
+          descripcion: m.descripcion || null,
+          comentario: m.comentario || null,
+          fijo_id: m.fijo_id || null,
+          actualizado: m.actualizado,
+        })),
+        fijos: fijos.map((f) => ({
+          id: f.id,
+          nombre: f.nombre,
+          monto: String(f.monto),
+          dia: f.dia,
+          tipo: f.tipo,
+          activo: f.activo !== false,
+          ...nombres(f.subcategoria_id, f.medio_pago_id),
+        })),
+        presupuestos: topes,
       };
     },
 
@@ -192,9 +212,9 @@ const COPIA = (() => {
       const siguienteId = (lista) =>
         lista.reduce((maximo, e) => Math.max(maximo, e.id), 0) + 1;
 
-      const movimientos = [];
-
-      for (const entrada of copia.movimientos) {
+      // Busca por nombre y crea lo que falte. Sirve igual para movimientos
+      // y para gastos fijos.
+      const resolver = (entrada) => {
 
         let categoria = entrada.categoria
           ? buscarCategoria(entrada.categoria)
@@ -232,7 +252,14 @@ const COPIA = (() => {
           medios.push(medio);
         }
 
-        movimientos.push({
+        return { sub, medio };
+      };
+
+      const movimientos = copia.movimientos.map((entrada) => {
+
+        const { sub, medio } = resolver(entrada);
+
+        return {
           uuid: entrada.uuid,
           fecha: entrada.fecha,
           monto: entrada.monto,
@@ -241,14 +268,59 @@ const COPIA = (() => {
           medio_pago_id: medio ? medio.id : null,
           descripcion: entrada.descripcion || null,
           comentario: entrada.comentario || null,
+          ...(entrada.fijo_id ? { fijo_id: entrada.fijo_id } : {}),
           actualizado: entrada.actualizado || new Date().toISOString(),
-        });
-      }
+        };
+      });
+
+      // Gastos fijos (copias de versión 2 en adelante).
+      const fijosCopia = Array.isArray(copia.fijos)
+        ? copia.fijos.map((f) => {
+            const { sub, medio } = resolver(f);
+            return {
+              id: f.id,
+              nombre: f.nombre,
+              monto: f.monto,
+              dia: f.dia,
+              tipo: f.tipo === "ingreso" ? "ingreso" : "gasto",
+              activo: f.activo !== false,
+              subcategoria_id: sub ? sub.id : null,
+              medio_pago_id: medio ? medio.id : null,
+            };
+          }).filter((f) => f.id && f.subcategoria_id)
+        : [];
 
       await DATOS.guardarCatalogo("categorias", categorias);
       await DATOS.guardarCatalogo("subcategorias", subcategorias);
       await DATOS.guardarCatalogo("medios_pago", medios);
+      // Una copia antigua no sabe de gastos fijos: que no borre el vínculo
+      // de un movimiento que ya lo tenía.
+      const existentes = new Map((await DATOS.movimientos()).map((m) => [m.uuid, m]));
+      movimientos.forEach((m) => {
+        const previo = existentes.get(m.uuid);
+        if (!m.fijo_id && previo && previo.fijo_id) m.fijo_id = previo.fijo_id;
+      });
+
       await DATOS.escribirVarios(movimientos);
+
+      if (Array.isArray(copia.fijos)) {
+        const actuales = reemplazar ? [] : await DATOS.ajuste("fijos", []);
+        const ids = new Set(fijosCopia.map((f) => f.id));
+        await DATOS.guardarAjuste("fijos", [
+          ...actuales.filter((f) => !ids.has(f.id)),
+          ...fijosCopia,
+        ]);
+      }
+
+      // Presupuestos: se traducen de nombre de categoría a identificador.
+      if (copia.presupuestos && typeof copia.presupuestos === "object") {
+        const topes = reemplazar ? {} : await DATOS.ajuste("presupuestos", {});
+        Object.entries(copia.presupuestos).forEach(([nombre, monto]) => {
+          const categoria = buscarCategoria(nombre);
+          if (categoria && Number(monto) > 0) topes[categoria.id] = Number(monto);
+        });
+        await DATOS.guardarAjuste("presupuestos", topes);
+      }
 
       return movimientos.length;
     },

@@ -107,7 +107,12 @@ const INTEL = (() => {
    * El ritmo variable excluye los recurrentes (una cuota grande no debe
    * multiplicarse por los días restantes).
    */
-  function proyeccion(todos, mes, ignorados = [], hoy = new Date()) {
+  function proyeccion(todos, mes, opciones = {}, hoy = new Date()) {
+
+    // Compatibilidad: antes el tercer parámetro era la lista de ignorados.
+    const { ignorados = [], fijos = [] } = Array.isArray(opciones)
+      ? { ignorados: opciones }
+      : opciones;
 
     if (hoy.getFullYear() !== mes.getFullYear() || hoy.getMonth() !== mes.getMonth()) {
       return null;
@@ -116,24 +121,40 @@ const INTEL = (() => {
     const diasMes = new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate();
     const dia = hoy.getDate();
 
-    const fijos = recurrentes(todos, mes, ignorados).filter((r) => !r.ignorado && r.tipo === "gasto");
-    const clavesFijas = new Set(fijos.map((r) => r.key));
-
     const delMes = todos.filter((m) =>
       m.tipo === "gasto" && indiceMes(m.fecha) === mes.getFullYear() * 12 + mes.getMonth());
+
+    // Gastos fijos: los definidos por la persona; si no hay, los detectados.
+    const definidos = fijos.filter((f) => f.activo !== false && f.tipo === "gasto");
+    let fijosPend;
+    let esFijo;
+
+    if (definidos.length) {
+      const claves = new Set(definidos.map(claveDeFijo));
+      const ids = new Set(definidos.map((f) => f.id));
+      esFijo = (m) => (m.fijo_id && ids.has(m.fijo_id)) || claves.has(clave(m));
+      fijosPend = estadoFijos(todos, mes, definidos)
+        .filter((e) => !e.pagado)
+        .map((e) => ({ monto: e.fijo.monto, nombre: e.fijo.nombre, fijo: e.fijo }));
+    } else {
+      const detectados = recurrentes(todos, mes, ignorados).filter((r) => !r.ignorado && r.tipo === "gasto");
+      const clavesFijas = new Set(detectados.map((r) => r.key));
+      esFijo = (m) => clavesFijas.has(clave(m));
+      fijosPend = detectados.filter((r) => !r.hecho);
+    }
 
     // Un gasto muy grande y puntual (una cuota, una compra) cuenta en lo
     // gastado, pero no debe multiplicarse por los días que faltan.
     const montos = todos.filter((m) => m.tipo === "gasto").map((m) => num(m.monto)).sort((x, y) => x - y);
     const p90 = montos.length ? montos[Math.floor(montos.length * 0.9)] : 0;
     const umbral = Math.max(p90 * 3, 1);
-    const esVariable = (m) => !clavesFijas.has(clave(m)) && num(m.monto) <= umbral;
+    const esVariable = (m) => !esFijo(m) && num(m.monto) <= umbral;
 
     const gastado = delMes.reduce((t, m) => t + num(m.monto), 0);
     const variable = delMes.filter(esVariable).reduce((t, m) => t + num(m.monto), 0);
 
-    const pendientes = fijos.filter((r) => !r.hecho);
-    const fijosPendientes = pendientes.reduce((t, r) => t + r.monto, 0);
+    const pendientes = fijosPend;
+    const fijosPendientes = pendientes.reduce((t, r) => t + num(r.monto), 0);
 
     // Ritmo diario: mezcla el de este mes con el de los tres meses
     // anteriores con datos; al principio pesa más el histórico.
@@ -165,6 +186,49 @@ const INTEL = (() => {
     return { gastado, cierre, ritmo, fijosPendientes, pendientes, dia, diasMes, gastoAnterior };
   }
 
-  return { recurrentes, proyeccion, clave, normalizar };
+  // ------------------------------------------------------------------
+  // Gastos fijos definidos por la persona
+  // ------------------------------------------------------------------
+
+  /** Clave para reconocer un movimiento que corresponde a un fijo. */
+  function claveDeFijo(f) {
+    return `${f.tipo}|${f.subcategoria_id}|${normalizar(f.nombre)}`;
+  }
+
+  /**
+   * Para cada fijo, si ya se registró en el mes indicado.
+   * Se reconoce por el vínculo directo (fijo_id) o, en movimientos
+   * antiguos, por la misma subcategoría y el mismo nombre.
+   */
+  function estadoFijos(todos, mes, fijos) {
+
+    const idx = mes.getFullYear() * 12 + mes.getMonth();
+    const delMes = todos.filter((m) => indiceMes(m.fecha) === idx);
+
+    return fijos.map((fijo) => {
+      const k = claveDeFijo(fijo);
+      const movimiento =
+        delMes.find((m) => m.fijo_id === fijo.id) ||
+        delMes.find((m) => !m.fijo_id && clave(m) === k) ||
+        null;
+      return { fijo, pagado: Boolean(movimiento), movimiento };
+    });
+  }
+
+  /**
+   * Movimientos repetidos del historial que aún no son un fijo
+   * ni se descartaron: se ofrecen como sugerencia.
+   */
+  function sugerencias(todos, mes, fijos, descartados = []) {
+
+    const cubiertos = new Set(fijos.map(claveDeFijo));
+
+    return recurrentes(todos, mes, [])
+      .filter((r) => r.nombre || r.subcategoria_id)
+      .filter((r) => !descartados.includes(r.key))
+      .filter((r) => !cubiertos.has(`${r.tipo}|${r.subcategoria_id}|${normalizar(r.descripcion)}`));
+  }
+
+  return { recurrentes, proyeccion, estadoFijos, sugerencias, claveDeFijo, clave, normalizar };
 
 })();

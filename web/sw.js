@@ -8,7 +8,7 @@
    subdirectorio, como ocurre en GitHub Pages.
    ===================================================================== */
 
-const CACHE = "finanzas-v15";
+const CACHE = "finanzas-v17";
 
 const ARCHIVOS = [
   "./",
@@ -20,7 +20,15 @@ const ARCHIVOS = [
   "./js/importar_csv.js",
   "./js/inteligencia.js",
   "./js/resumen.js",
-  "./js/app.js",
+  "./js/nucleo.js",
+  "./js/dialogos.js",
+  "./js/hoja_mov.js",
+  "./js/vista_inicio.js",
+  "./js/vista_movimientos.js",
+  "./js/vista_analisis.js",
+  "./js/vista_planificar.js",
+  "./js/vista_ajustes.js",
+  "./js/main.js",
   "./manifest.json",
   "./iconos/icono-192.png",
   "./iconos/icono-512.png",

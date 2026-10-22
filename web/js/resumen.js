@@ -201,15 +201,22 @@ const RESUMEN = (() => {
   // Tarjetas
   // ------------------------------------------------------------------
 
+  const mostrarCifra = (nodo, valor) => {
+    if (!nodo) return;
+    if (typeof APP !== "undefined" && APP.contar) APP.contar(nodo, valor);
+    else nodo.textContent = euros.format(valor);
+  };
+
   function tarjetas(ingresos, gastos) {
 
     const totalIngresos = suma(ingresos);
     const totalGastos = suma(gastos);
     const balance = totalIngresos - totalGastos;
 
-    $("#kpi-ingresos").textContent = euros.format(totalIngresos);
-    $("#kpi-gastos").textContent = euros.format(totalGastos);
-    $("#kpi-balance").textContent = euros.format(balance);
+    mostrarCifra($("#kpi-ingresos"), totalIngresos);
+    mostrarCifra($("#kpi-gastos"), totalGastos);
+    mostrarCifra($("#kpi-balance"), balance);
+    $("#kpi-balance").classList.toggle("hero__cifra--negativa", balance < 0);
 
     $("#kpi-ingresos-n").textContent =
       `${ingresos.length} ${ingresos.length === 1 ? "movimiento" : "movimientos"}`;
@@ -217,6 +224,7 @@ const RESUMEN = (() => {
       `${gastos.length} ${gastos.length === 1 ? "movimiento" : "movimientos"}`;
 
     const pie = $("#kpi-balance-pie");
+    pie.classList.remove("hero__pie--mal");
 
     if (!ingresos.length && !gastos.length) {
       pie.textContent = "Sin datos este mes";
@@ -227,9 +235,84 @@ const RESUMEN = (() => {
       pie.textContent = `Ahorras el ${ahorro}%`;
     } else {
       pie.textContent = "Gastas más de lo que ingresas";
+      pie.classList.add("hero__pie--mal");
     }
 
     return totalGastos;
+  }
+
+  // ------------------------------------------------------------------
+  // Ritmo del mes: gasto acumulado día a día frente al mes anterior
+  // ------------------------------------------------------------------
+
+  function heroSpark(contexto) {
+
+    const destino = $("#hero-spark");
+    if (!destino) return;
+    destino.innerHTML = "";
+
+    const anio = contexto.mes.getFullYear();
+    const mes = contexto.mes.getMonth();
+    const diasMes = new Date(anio, mes + 1, 0).getDate();
+    const hoy = new Date();
+    const esActual = hoy.getFullYear() === anio && hoy.getMonth() === mes;
+    const hasta = esActual ? hoy.getDate() : diasMes;
+
+    const acumulado = (fecha, limite) => {
+      const dias = Array(32).fill(0);
+      delMes(contexto.todos, fecha)
+        .filter((m) => m.tipo === "gasto")
+        .forEach((m) => { dias[Number(m.fecha.slice(8, 10))] += Number(m.monto) || 0; });
+      const salida = [];
+      let total = 0;
+      for (let d = 1; d <= limite; d += 1) { total += dias[d]; salida.push(total); }
+      return salida;
+    };
+
+    const actual = acumulado(contexto.mes, hasta);
+    const previo = acumulado(new Date(anio, mes - 1, 1), diasMes);
+
+    const maximo = Math.max(...actual, ...previo, 1);
+    if (maximo <= 1 && !actual.some((v) => v > 0)) return;
+
+    const W = 320, H = 64, y0 = 6, y1 = H - 4;
+    const x = (i, n) => (n <= 1 ? 0 : (i * W) / (diasMes - 1));
+    const y = (v) => y1 - (v / maximo) * (y1 - y0);
+
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "hero__svg", preserveAspectRatio: "none", "aria-hidden": "true" });
+    const defs = svgEl("defs");
+    const gradiente = svgEl("linearGradient", { id: "hero-g", x1: 0, y1: 0, x2: 0, y2: 1 });
+    gradiente.appendChild(svgEl("stop", { offset: "0%", "stop-color": "#ffffff", "stop-opacity": 0.35 }));
+    gradiente.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#ffffff", "stop-opacity": 0 }));
+    defs.appendChild(gradiente);
+    svg.appendChild(defs);
+
+    const puntos = (lista) => lista.map((v, i) => [x(i, diasMes), y(v)]);
+
+    if (previo.some((v) => v > 0)) {
+      svg.appendChild(svgEl("path", {
+        d: trazoSuave(puntos(previo), y0, y1), fill: "none",
+        stroke: "rgba(255,255,255,.35)", "stroke-width": 1.6, "stroke-dasharray": "3 4",
+        "vector-effect": "non-scaling-stroke",
+      }));
+    }
+
+    const pa = puntos(actual);
+    const linea = trazoSuave(pa, y0, y1);
+    svg.appendChild(svgEl("path", {
+      d: `${linea} L${pa[pa.length - 1][0]},${y1} L${pa[0][0]},${y1} Z`, fill: "url(#hero-g)",
+    }));
+    svg.appendChild(svgEl("path", {
+      d: linea, fill: "none", stroke: "#fff", "stroke-width": 2.2,
+      "stroke-linecap": "round", "vector-effect": "non-scaling-stroke",
+    }));
+
+    destino.appendChild(svg);
+
+    const pie = document.createElement("div");
+    pie.className = "hero__spark-pie";
+    pie.innerHTML = "<span>Gasto acumulado</span><span>Línea punteada: mes anterior</span>";
+    destino.appendChild(pie);
   }
 
   // ------------------------------------------------------------------
@@ -646,7 +729,7 @@ const RESUMEN = (() => {
   // Calendario de gastos (mapa de calor)
   // ------------------------------------------------------------------
 
-  function calendario(todos, mes) {
+  function calendario(todos, mes, opciones = {}) {
 
     const contenedor = $("#calendario");
     contenedor.innerHTML = "";
@@ -767,7 +850,10 @@ const RESUMEN = (() => {
       }
       if (esMesActual && dia === hoy.getDate()) celda.classList.add("celda--hoy");
 
-      celda.addEventListener("click", () => elegir(dia));
+      celda.addEventListener("click", () => {
+        elegir(dia);
+        if (opciones.alElegir) opciones.alElegir(dia);
+      });
       celdas.push(celda);
       cuadricula.appendChild(celda);
 
@@ -785,7 +871,7 @@ const RESUMEN = (() => {
     contenedor.appendChild(escala);
 
     contenedor.appendChild(detalle);
-    elegir(diaCaro);
+    elegir(opciones.dia || diaCaro);
   }
 
   // ------------------------------------------------------------------
@@ -997,7 +1083,10 @@ const RESUMEN = (() => {
 
     const caja = destino.closest(".bloque");
     const p = typeof INTEL !== "undefined"
-      ? INTEL.proyeccion(contexto.todos, contexto.mes, contexto.ignorados || [])
+      ? INTEL.proyeccion(contexto.todos, contexto.mes, {
+          ignorados: contexto.ignorados || [],
+          fijos: contexto.fijos || [],
+        })
       : null;
 
     caja.hidden = !p;
@@ -1006,7 +1095,7 @@ const RESUMEN = (() => {
 
     const cuerpo = document.createElement("div");
     cuerpo.innerHTML = `
-      <p class="proy__etiqueta">Cerrarás el mes en aproximadamente</p>
+      <p class="proy__etiqueta">Cerrarás el mes en torno a</p>
       <p class="proy__cifra"></p>
       <p class="proy__delta"></p>
       <div class="proy__riel">
@@ -1040,7 +1129,7 @@ const RESUMEN = (() => {
     [
       ["Ritmo diario", euros.format(p.ritmo)],
       ["Fijos por llegar", euros.format(p.fijosPendientes)],
-      ["Recurrentes", `${p.pendientes.length} pendiente${p.pendientes.length === 1 ? "" : "s"}`],
+      ["Fijos pendientes", `${p.pendientes.length}`],
     ].forEach(([etiqueta, valor]) => {
       const dato = document.createElement("div");
       dato.className = "dato";
@@ -1054,12 +1143,12 @@ const RESUMEN = (() => {
   }
 
   // ------------------------------------------------------------------
-  // Presupuestos por categoría
+  // Presupuestos en vigilancia (las categorías que se acercan al tope)
   // ------------------------------------------------------------------
 
-  function presupuestosBloque(contexto, gastos) {
+  function presupuestosAlertas(contexto, gastos) {
 
-    const destino = $("#presupuestos");
+    const destino = $("#pres-alertas");
     if (!destino) return;
 
     destino.innerHTML = "";
@@ -1079,30 +1168,29 @@ const RESUMEN = (() => {
         tope: Number(tope),
         gastado: gastado.get(Number(id)) || 0,
       }))
-      .filter((f) => f.categoria && f.tope > 0)
-      .sort((a, b) => b.gastado / b.tope - a.gastado / a.tope);
+      .filter((f) => f.categoria && f.tope > 0);
 
     if (!filas.length) {
       destino.innerHTML =
-        '<p class="bloque__nota">Aún no has fijado topes. Hazlo en Ajustes → Presupuestos.</p>';
+        '<p class="bloque__nota">Fija un tope por categoría en <a href="#planificar" class="enlace">Planificar</a> y aquí verás cuáles se acercan al límite.</p>';
       return;
     }
 
-    const totalTope = filas.reduce((t, f) => t + f.tope, 0);
-    const totalGastado = filas.reduce((t, f) => t + f.gastado, 0);
+    const enAlerta = filas
+      .filter((f) => f.gastado / f.tope >= 0.75)
+      .sort((a, b) => b.gastado / b.tope - a.gastado / a.tope)
+      .slice(0, 4);
 
-    const resumen = document.createElement("p");
-    resumen.className = "comp__resumen";
-    const resto = totalTope - totalGastado;
-    resumen.innerHTML = resto >= 0
-      ? `Te quedan <b class="comp__num--baja">${euros.format(resto)}</b> de ${euros.format(totalTope)} presupuestados.`
-      : `Te pasaste <b class="comp__num--sube">${euros.format(-resto)}</b> sobre ${euros.format(totalTope)} presupuestados.`;
-    destino.appendChild(resumen);
+    if (!enAlerta.length) {
+      destino.innerHTML =
+        '<p class="comp__resumen">Todo en orden: ninguna categoría supera el 75% de su tope.</p>';
+      return;
+    }
 
-    filas.forEach((f) => {
+    enAlerta.forEach((f) => {
 
       const fraccion = f.gastado / f.tope;
-      const nivel = fraccion > 1 ? "alto" : fraccion >= 0.75 ? "medio" : "";
+      const nivel = fraccion > 1 ? "alto" : "medio";
 
       const fila = document.createElement("div");
       fila.className = "pres-fila";
@@ -1120,7 +1208,7 @@ const RESUMEN = (() => {
 
       const fill = fila.querySelector(".pres__fill");
       fill.style.width = `${Math.min(fraccion, 1) * 100}%`;
-      if (nivel) fill.classList.add(`pres__fill--${nivel}`);
+      fill.classList.add(`pres__fill--${nivel}`);
 
       const nota = fila.querySelector(".pres__resto");
       if (fraccion > 1) {
@@ -1134,23 +1222,35 @@ const RESUMEN = (() => {
     });
   }
 
+  function resumenDelMes(contexto) {
+    const movimientos = delMes(contexto.todos, contexto.mes);
+    return {
+      ingresos: movimientos.filter((m) => m.tipo === "ingreso"),
+      gastos: movimientos.filter((m) => m.tipo === "gasto"),
+    };
+  }
+
   return {
 
-    pintar(contexto) {
-
-      $("#res-mes").textContent = mesLargo.format(contexto.mes);
-
-      const movimientos = delMes(contexto.todos, contexto.mes);
-      const ingresos = movimientos.filter((m) => m.tipo === "ingreso");
-      const gastos = movimientos.filter((m) => m.tipo === "gasto");
-
+    /** Pestaña Inicio. */
+    pintarInicio(contexto) {
+      const { ingresos, gastos } = resumenDelMes(contexto);
       const totalGastos = tarjetas(ingresos, gastos);
-
-      proyeccionBloque(contexto);
-      presupuestosBloque(contexto, gastos);
+      heroSpark(contexto);
       porCategoria(gastos, totalGastos, contexto);
+      proyeccionBloque(contexto);
+      presupuestosAlertas(contexto, gastos);
+    },
+
+    /** Calendario de la pestaña Movimientos. */
+    pintarCalendario(contexto, opciones) {
+      calendario(contexto.todos, contexto.mes, opciones);
+    },
+
+    /** Pestaña Análisis. */
+    pintarAnalisis(contexto) {
+      const { gastos } = resumenDelMes(contexto);
       comparativa(contexto.todos, contexto.mes, gastos, contexto);
-      calendario(contexto.todos, contexto.mes);
       evolucion(contexto.todos, contexto.mes);
       comparacionAnual(contexto.todos);
       anioContraAnio(contexto.todos);
