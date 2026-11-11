@@ -9,7 +9,7 @@
 
 const COPIA = (() => {
 
-  const VERSION = 3;
+  const VERSION = 4;
 
   function nombreArchivo() {
 
@@ -92,6 +92,16 @@ const COPIA = (() => {
           ...nombres(f.subcategoria_id, f.medio_pago_id),
         })),
         presupuestos: topes,
+        comprobantes: await (async () => {
+          const usados = new Set(prestamos.flatMap((p) =>
+            [p.comprobante, ...(p.abonos || []).map((a) => a.comprobante)].filter(Boolean)));
+          const mapa = {};
+          for (const id of usados) {
+            const datos = await DATOS.comprobante(id);
+            if (datos) mapa[id] = datos;
+          }
+          return mapa;
+        })(),
         prestamos: prestamos.map((p) => ({
           id: p.id,
           persona: p.persona,
@@ -100,8 +110,11 @@ const COPIA = (() => {
           limite: p.limite || null,
           nota: p.nota || null,
           perdonado: Boolean(p.perdonado),
+          comprobante: p.comprobante || null,
           medio_pago: (medioPorId.get(p.medio_pago_id) || {}).nombre || null,
-          abonos: (p.abonos || []).map((a) => ({ id: a.id, fecha: a.fecha, monto: String(a.monto) })),
+          abonos: (p.abonos || []).map((a) => ({
+            id: a.id, fecha: a.fecha, monto: String(a.monto), comprobante: a.comprobante || null,
+          })),
         })),
       };
     },
@@ -315,6 +328,7 @@ const COPIA = (() => {
               limite: p.limite || null,
               nota: p.nota || null,
               perdonado: Boolean(p.perdonado),
+              comprobante: p.comprobante || null,
               medio_pago_id: medio ? medio.id : null,
               abonos: Array.isArray(p.abonos) ? p.abonos : [],
             };
@@ -341,6 +355,14 @@ const COPIA = (() => {
           ...actuales.filter((f) => !ids.has(f.id)),
           ...fijosCopia,
         ]);
+      }
+
+      if (copia.comprobantes && typeof copia.comprobantes === "object") {
+        for (const [id, datos] of Object.entries(copia.comprobantes)) {
+          if (typeof datos === "string" && datos.startsWith("data:image/")) {
+            await DATOS.guardarComprobante(id, datos);
+          }
+        }
       }
 
       if (Array.isArray(copia.prestamos)) {

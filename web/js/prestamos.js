@@ -105,6 +105,10 @@ const PRESTAMOS = (() => {
   const cambiar = (id, f) =>
     estado.prestamos.map((p) => (p.id === id ? f(p) : p));
 
+  /** Identificadores de todas las imágenes de un préstamo (suyo y de sus abonos). */
+  const idsImagenes = (p) =>
+    [p.comprobante, ...(p.abonos || []).map((a) => a.comprobante)].filter(Boolean);
+
   const corta = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
   const fechaCorta = (s) => corta.format(new Date(s + "T00:00:00")).replace(".", "");
   const dinero = (n) => euros.format(n);
@@ -139,6 +143,7 @@ const PRESTAMOS = (() => {
       campos: [
         { id: "monto", tipo: "monto", etiqueta: "Importe devuelto", requerido: true, placeholder: "0,00" },
         { id: "fecha", tipo: "fecha", etiqueta: "Fecha", valor: iso(new Date()), requerido: true },
+        { id: "comprobante", tipo: "imagen", etiqueta: "Comprobante de la devolución (opcional)", valor: "", texto: "Adjuntar o tomar foto" },
       ],
       validar: (v) => (num(v.monto) > pendiente + 0.004
         ? `No puede ser más de lo que falta (${dinero(pendiente)}).` : null),
@@ -146,12 +151,14 @@ const PRESTAMOS = (() => {
 
     if (!r) return;
 
-    const abono = { id: identificador(), fecha: r.fecha, monto: num(r.monto).toFixed(2) };
+    const comprobante = await IMAGEN.aplicar(r.comprobante, null);
+    const abono = { id: identificador(), fecha: r.fecha, monto: num(r.monto).toFixed(2), comprobante };
     await guardarLista(cambiar(p.id, (x) => ({ ...x, abonos: [...(x.abonos || []), abono] })));
     pintar();
     APP.repintar();
 
     avisarConAccion("Abono registrado", "Deshacer", async () => {
+      await IMAGEN.aplicar("", comprobante);
       await guardarLista(cambiar(p.id, (x) => ({ ...x, abonos: (x.abonos || []).filter((a) => a.id !== abono.id) })));
       pintar();
       APP.repintar();
@@ -190,6 +197,7 @@ const PRESTAMOS = (() => {
 
     if (!ok) return;
 
+    for (const id of idsImagenes(p)) await DATOS.eliminarComprobante(id);
     await guardarLista(estado.prestamos.filter((x) => x.id !== p.id));
     avisar("Préstamo eliminado");
     pintar();
@@ -204,7 +212,7 @@ const PRESTAMOS = (() => {
     const historial = p && (p.abonos || []).length
       ? "Abonos:\n" + [...p.abonos]
           .sort((a, b) => a.fecha.localeCompare(b.fecha))
-          .map((a) => `· ${fechaCorta(a.fecha)} — ${dinero(num(a.monto))}`)
+          .map((a) => `· ${fechaCorta(a.fecha)} — ${dinero(num(a.monto))}${a.comprobante ? " · con comprobante" : ""}`)
           .join("\n")
       : "";
 
@@ -220,6 +228,7 @@ const PRESTAMOS = (() => {
         { id: "limite", tipo: "fecha", etiqueta: "Fecha límite (opcional)", valor: p ? (p.limite || "") : "" },
         { id: "medio", tipo: "select", etiqueta: "Salió de", valor: p ? (p.medio_pago_id || "") : "", opciones: medios },
         { id: "nota", tipo: "texto", etiqueta: "Nota (opcional)", valor: p ? (p.nota || "") : "", maxlength: 120 },
+        { id: "comprobante", tipo: "imagen", etiqueta: "Comprobante del préstamo (opcional)", valor: p && p.comprobante ? `id:${p.comprobante}` : "", texto: "Adjuntar o tomar foto" },
         ...(p ? [{
           id: "estado", tipo: "select", etiqueta: "Estado", valor: p.perdonado ? "perdonado" : "activo",
           opciones: [
@@ -244,6 +253,8 @@ const PRESTAMOS = (() => {
       return;
     }
 
+    const comprobante = await IMAGEN.aplicar(r.comprobante, p ? p.comprobante : null);
+
     const nuevo = {
       id: p ? p.id : identificador(),
       persona: r.persona,
@@ -252,6 +263,7 @@ const PRESTAMOS = (() => {
       limite: r.limite || null,
       medio_pago_id: r.medio ? Number(r.medio) : null,
       nota: r.nota || null,
+      comprobante,
       perdonado: p ? r.estado === "perdonado" : false,
       abonos: p ? (p.abonos || []) : [],
     };
@@ -336,6 +348,28 @@ const PRESTAMOS = (() => {
     }
 
     nodo.querySelector(".fijo__cuerpo").addEventListener("click", () => formulario(p));
+
+    // Clip: abre todos los comprobantes del préstamo y de sus abonos.
+    const imagenes = [
+      p.comprobante ? { id: p.comprobante, titulo: `Préstamo · ${fechaCorta(p.fecha)}` } : null,
+      ...[...(p.abonos || [])]
+        .sort((a, b) => a.fecha.localeCompare(b.fecha))
+        .map((a) => (a.comprobante
+          ? { id: a.comprobante, titulo: `Abono de ${dinero(num(a.monto))} · ${fechaCorta(a.fecha)}` }
+          : null)),
+    ].filter(Boolean);
+
+    if (imagenes.length) {
+      const clip = document.createElement("button");
+      clip.type = "button";
+      clip.className = "prestamo__clip";
+      clip.setAttribute("aria-label", `Ver ${imagenes.length === 1 ? "comprobante" : "comprobantes"}`);
+      clip.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l9-9a3.3 3.3 0 0 1 4.7 4.7l-9 9a1.7 1.7 0 0 1-2.4-2.4l8.3-8.3"/></svg>' +
+        (imagenes.length > 1 ? `<b>${imagenes.length}</b>` : "");
+      clip.addEventListener("click", () => IMAGEN.ver(imagenes));
+      nodo.querySelector(".fijo__nombre").appendChild(clip);
+    }
+
     return nodo;
   }
 
@@ -413,7 +447,7 @@ const PRESTAMOS = (() => {
 
   return {
     num, devuelto, saldo, situacion, resumen, balanceTotal, porCobrar,
-    pintar, formulario, devolverTodo, abonar, reabrir, eliminar,
+    pintar, formulario, devolverTodo, abonar, reabrir, eliminar, idsImagenes,
   };
 
 })();

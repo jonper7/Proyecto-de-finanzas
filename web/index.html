@@ -473,7 +473,13 @@
   </form>
 </section>
 
+<div id="visor" class="visor" hidden role="dialog" aria-label="Comprobante">
+  <button type="button" class="visor__cerrar" aria-label="Cerrar" onclick="IMAGEN.cerrarVisor()">×</button>
+  <div class="visor__lista" id="visor-lista"></div>
+</div>
+
 <script src="js/config.js"></script>
+<script src="js/imagen.js"></script>
 <script src="js/datos.js"></script>
 <script src="js/copia.js"></script>
 <script src="js/importar_csv.js"></script>

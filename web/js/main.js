@@ -5,6 +5,7 @@
 (() => {
 
   DIALOGO.conectar();
+  IMAGEN.conectar();
   MOV.conectar();
   APP.iniciar();
 

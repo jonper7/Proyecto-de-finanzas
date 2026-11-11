@@ -8,7 +8,7 @@
 const DATOS = (() => {
 
   const NOMBRE = "finanzas";
-  const VERSION = 1;
+  const VERSION = 2;
 
   let conexion = null;
 
@@ -95,6 +95,11 @@ const DATOS = (() => {
 
         if (!db.objectStoreNames.contains("ajustes")) {
           db.createObjectStore("ajustes", { keyPath: "clave" });
+        }
+
+        // Imágenes (comprobantes). Se añadió en la versión 2 de la base.
+        if (!db.objectStoreNames.contains("comprobantes")) {
+          db.createObjectStore("comprobantes", { keyPath: "id" });
         }
       };
 
@@ -278,6 +283,37 @@ const DATOS = (() => {
     async guardarAjuste(clave, valor) {
       await transaccion(["ajustes"], "readwrite", (almacen) =>
         almacen.put({ clave, valor })
+      );
+    },
+
+    // ----------------------------------------------------------------
+    // Comprobantes (imágenes ya reducidas, como texto data:image/...)
+    // ----------------------------------------------------------------
+
+    async comprobante(id) {
+      if (!id) return null;
+      const fila = await transaccion(["comprobantes"], "readonly", (almacen) =>
+        promesa(almacen.get(id))
+      );
+      return fila ? fila.datos : null;
+    },
+
+    async guardarComprobante(id, datos) {
+      await transaccion(["comprobantes"], "readwrite", (almacen) =>
+        almacen.put({ id, datos })
+      );
+    },
+
+    async eliminarComprobante(id) {
+      if (!id) return;
+      await transaccion(["comprobantes"], "readwrite", (almacen) =>
+        almacen.delete(id)
+      );
+    },
+
+    async comprobantes() {
+      return transaccion(["comprobantes"], "readonly", (almacen) =>
+        promesa(almacen.getAll())
       );
     },
 

@@ -8,7 +8,7 @@
      DIALOGO.formulario({ titulo, campos, aceptar })           -> valores | null
 
    Campos: { id, tipo, etiqueta, valor, opciones, requerido, ... }
-     tipo "texto" | "monto" | "numero" | "fecha" | "select"
+     tipo "texto" | "monto" | "numero" | "fecha" | "imagen" | "select"
    ===================================================================== */
 
 const DIALOGO = (() => {
@@ -38,7 +38,118 @@ const DIALOGO = (() => {
     nodo.hidden = !texto;
   }
 
+  /**
+   * Campo de imagen: elegir o fotografiar, ver miniatura, cambiar, quitar.
+   * Su valor ("", "id:<uuid>" o data:image/...) va en un input oculto.
+   */
+  function crearCampoImagen(campo) {
+
+    const caja = document.createElement("div");
+    caja.className = "campo campo--imagen";
+
+    const rotulo = document.createElement("span");
+    rotulo.className = "campo__etiqueta";
+    rotulo.textContent = campo.etiqueta || "";
+    caja.appendChild(rotulo);
+
+    const oculto = document.createElement("input");
+    oculto.type = "hidden";
+    oculto.id = `dlg-${campo.id}`;
+    oculto.value = campo.valor || "";
+
+    const archivo = document.createElement("input");
+    archivo.type = "file";
+    archivo.accept = "image/*";
+    archivo.hidden = true;
+
+    const fila = document.createElement("div");
+    fila.className = "imagen";
+
+    const miniatura = document.createElement("button");
+    miniatura.type = "button";
+    miniatura.className = "imagen__mini";
+    miniatura.setAttribute("aria-label", "Ver imagen");
+
+    const acciones = document.createElement("div");
+    acciones.className = "imagen__acciones";
+
+    const elegir = document.createElement("button");
+    elegir.type = "button";
+    elegir.className = "mini mini--suave mini--grande";
+
+    const quitar = document.createElement("button");
+    quitar.type = "button";
+    quitar.className = "mini mini--suave mini--grande imagen__quitar";
+    quitar.textContent = "Quitar";
+
+    acciones.append(elegir, quitar);
+    fila.append(miniatura, acciones);
+    caja.append(fila, archivo, oculto);
+
+    let version = 0;
+
+    async function pintar() {
+
+      const valor = oculto.value;
+      const miVersion = ++version;
+
+      miniatura.hidden = !valor;
+      quitar.hidden = !valor;
+      elegir.textContent = valor ? "Cambiar imagen" : (campo.texto || "Adjuntar imagen");
+
+      if (!valor) {
+        miniatura.style.backgroundImage = "";
+        return;
+      }
+
+      const url = valor.startsWith("id:")
+        ? await DATOS.comprobante(valor.slice(3))
+        : valor;
+
+      if (miVersion === version) {
+        miniatura.style.backgroundImage = url ? `url("${url}")` : "";
+      }
+    }
+
+    elegir.addEventListener("click", () => archivo.click());
+
+    quitar.addEventListener("click", () => {
+      oculto.value = "";
+      archivo.value = "";
+      mostrarError("");
+      pintar();
+    });
+
+    miniatura.addEventListener("click", () => {
+      const valor = oculto.value;
+      if (valor.startsWith("id:")) {
+        IMAGEN.ver([{ id: valor.slice(3), titulo: campo.etiqueta }]);
+      }
+    });
+
+    archivo.addEventListener("change", async () => {
+      const elegido = archivo.files && archivo.files[0];
+      if (!elegido) return;
+      elegir.disabled = true;
+      elegir.textContent = "Procesando…";
+      try {
+        oculto.value = await IMAGEN.reducir(elegido);
+        mostrarError("");
+      } catch (error) {
+        mostrarError(error.message || "No se pudo usar la imagen.");
+      }
+      elegir.disabled = false;
+      archivo.value = "";
+      pintar();
+    });
+
+    pintar();
+    return caja;
+  }
+
   function crearCampo(campo) {
+
+    if (campo.tipo === "imagen") return crearCampoImagen(campo);
 
     const etiqueta = document.createElement("label");
     etiqueta.className = "campo";
@@ -162,7 +273,7 @@ const DIALOGO = (() => {
     $("#dialogo").hidden = false;
     document.body.classList.add("sin-scroll");
 
-    const primero = zona.querySelector("input:not([disabled]), select:not([disabled])");
+    const primero = zona.querySelector("input:not([disabled]):not([type=hidden]):not([type=file]), select:not([disabled])");
     if (primero) {
       setTimeout(() => {
         primero.focus();

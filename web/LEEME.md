@@ -111,6 +111,7 @@ web/
 │   ├── vista_inicio.js        pestaña Inicio
 │   ├── vista_movimientos.js   pestaña Movimientos
 │   ├── vista_analisis.js      pestaña Análisis
+│   ├── imagen.js         fotos adjuntas: reducir, guardar y visor
 │   ├── prestamos.js      préstamos: saldo, abonos, vencidos y balance total
 │   ├── vista_planificar.js    pestaña Planificar (fijos, presupuestos y préstamos)
 │   ├── vista_ajustes.js       pestaña Ajustes (categorías, copia...)
