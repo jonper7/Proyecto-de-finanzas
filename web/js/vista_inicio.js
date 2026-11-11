@@ -110,18 +110,64 @@
     zona.appendChild(nodo);
   }
 
+  function avisoPrestamos(zona) {
+
+    const lista = PRESTAMOS.porCobrar(estado.prestamos || []);
+    if (!lista.length) return;
+
+    const nodo = tira("Préstamos por cobrar");
+    const chips = document.createElement("div");
+    chips.className = "chips";
+
+    lista.forEach((p) => {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.innerHTML = '<button type="button" class="chip__texto"></button>';
+
+      const texto = chip.querySelector(".chip__texto");
+      texto.textContent = p.persona;
+      const monto = document.createElement("b");
+      monto.textContent = euros.format(PRESTAMOS.saldo(p));
+      texto.appendChild(monto);
+
+      texto.addEventListener("click", () => {
+        estado.subPlanificar = "prestamos";
+        APP.irA("planificar");
+      });
+
+      chips.appendChild(chip);
+    });
+
+    nodo.appendChild(chips);
+    zona.appendChild(nodo);
+  }
+
+  function pintarTotal() {
+
+    const nodo = $("#kpi-total");
+    const lista = estado.prestamos || [];
+    const total = PRESTAMOS.balanceTotal(estado.todos, lista);
+    const fuera = PRESTAMOS.resumen(lista).fuera;
+
+    nodo.hidden = !estado.todos.length;
+    nodo.textContent = `Balance total ${euros.format(total)}` +
+      (fuera > 0 ? ` · ${euros.format(fuera)} prestados` : "");
+  }
+
   async function pintarAvisos() {
 
     const zona = $("#avisos-inicio");
     zona.innerHTML = "";
 
     avisoFijos(zona);
+    avisoPrestamos(zona);
     await avisoCopia(zona);
   }
 
   function pintar() {
     $("#inicio-mes").textContent = mesLargo.format(estado.mes);
     RESUMEN.pintarInicio(APP.contexto());
+    pintarTotal();
     pintarAvisos();
   }
 

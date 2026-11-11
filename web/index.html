@@ -41,6 +41,7 @@
     <p class="hero__etiqueta">Balance del mes</p>
     <p class="hero__cifra" id="kpi-balance">—</p>
     <p class="hero__pie" id="kpi-balance-pie">—</p>
+    <p class="hero__total" id="kpi-total" hidden></p>
     <div class="hero__spark" id="hero-spark"></div>
   </section>
 
@@ -181,11 +182,13 @@
       <h1 class="vista__titulo">Planificar</h1>
     </div>
     <button type="button" class="mini mini--principal mini--grande" id="nuevo-fijo">+ Nuevo fijo</button>
+    <button type="button" class="mini mini--principal mini--grande" id="nuevo-prestamo" hidden>+ Nuevo préstamo</button>
   </header>
 
   <nav class="segmentos" id="plan-segmentos" aria-label="Sección">
     <button type="button" class="segmento--activo" data-sub="fijos">Gastos fijos</button>
     <button type="button" data-sub="presupuestos">Presupuestos</button>
+    <button type="button" data-sub="prestamos">Préstamos</button>
   </nav>
 
   <div id="plan-fijos">
@@ -233,6 +236,30 @@
       <p class="bloque__nota">Toca una categoría para fijar o cambiar su tope mensual.</p>
       <div id="pres-lista"></div>
     </section>
+
+  </div>
+
+  <div id="plan-prestamos" hidden>
+
+    <section class="bloque bloque--hero" id="prest-resumen" hidden>
+      <p class="proy__etiqueta">Te deben</p>
+      <p class="proy__cifra" id="prest-total">—</p>
+      <div class="proy__riel"><div class="proy__fill" id="prest-progreso"></div></div>
+      <p class="proy__pie"><span id="prest-detalle"></span></p>
+      <div class="datos datos--dos" style="margin-bottom:0">
+        <div class="dato">
+          <span class="dato__etiqueta">Balance total</span>
+          <span class="dato__valor" id="prest-balance">—</span>
+          <small class="dato__nota" id="prest-fuera"></small>
+        </div>
+        <div class="dato">
+          <span class="dato__etiqueta">Devuelto este mes</span>
+          <span class="dato__valor" id="prest-mes">—</span>
+        </div>
+      </div>
+    </section>
+
+    <div id="prest-lista"></div>
 
   </div>
 
@@ -458,6 +485,7 @@
 <script src="js/vista_inicio.js"></script>
 <script src="js/vista_movimientos.js"></script>
 <script src="js/vista_analisis.js"></script>
+<script src="js/prestamos.js"></script>
 <script src="js/vista_planificar.js"></script>
 <script src="js/vista_ajustes.js"></script>
 <script src="js/main.js"></script>

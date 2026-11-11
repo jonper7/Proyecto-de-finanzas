@@ -24,6 +24,7 @@ const APP = (() => {
     mediosPorId: new Map(),
     presupuestos: {},        // { categoria_id: tope mensual }
     fijos: [],               // gastos frecuentes definidos por la persona
+    prestamos: [],           // dinero prestado y sus abonos
     descartados: [],         // sugerencias de fijos que se descartaron
     editando: null,
     vista: "inicio",
@@ -204,6 +205,7 @@ const APP = (() => {
     estado.presupuestos = await DATOS.ajuste("presupuestos", {});
     estado.fijos = await DATOS.ajuste("fijos", []);
     estado.descartados = await DATOS.ajuste("fijos_descartados", []);
+    estado.prestamos = await DATOS.ajuste("prestamos", []);
   }
 
   async function refrescar() {

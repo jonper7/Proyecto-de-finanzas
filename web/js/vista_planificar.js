@@ -8,6 +8,9 @@
 
    Presupuestos
      Un tope mensual por categoría de gasto.
+
+   Préstamos
+     Se pintan desde prestamos.js; aquí solo se elige el segmento.
    ===================================================================== */
 
 const FIJOS = (() => {
@@ -403,13 +406,16 @@ const FIJOS = (() => {
     $$("#plan-segmentos button").forEach((b) => b.classList.toggle("segmento--activa", b.dataset.sub === sub));
     $("#plan-fijos").hidden = sub !== "fijos";
     $("#plan-presupuestos").hidden = sub !== "presupuestos";
+    $("#plan-prestamos").hidden = sub !== "prestamos";
     $("#nuevo-fijo").hidden = sub !== "fijos";
+    $("#nuevo-prestamo").hidden = sub !== "prestamos";
   }
 
   function pintar() {
     mostrarSub(estado.subPlanificar || "fijos");
     pintarFijos();
     pintarPresupuestos();
+    PRESTAMOS.pintar();
   }
 
   function conectar() {

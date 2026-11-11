@@ -8,7 +8,7 @@
      DIALOGO.formulario({ titulo, campos, aceptar })           -> valores | null
 
    Campos: { id, tipo, etiqueta, valor, opciones, requerido, ... }
-     tipo "texto" | "monto" | "numero" | "select"
+     tipo "texto" | "monto" | "numero" | "fecha" | "select"
    ===================================================================== */
 
 const DIALOGO = (() => {
@@ -81,7 +81,7 @@ const DIALOGO = (() => {
     } else {
 
       control = document.createElement("input");
-      control.type = campo.tipo === "numero" ? "number" : "text";
+      control.type = campo.tipo === "numero" ? "number" : campo.tipo === "fecha" ? "date" : "text";
 
       if (campo.tipo === "monto") control.inputMode = "decimal";
       if (campo.tipo === "numero") {

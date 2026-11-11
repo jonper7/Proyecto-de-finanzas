@@ -9,7 +9,7 @@
 
 const COPIA = (() => {
 
-  const VERSION = 2;
+  const VERSION = 3;
 
   function nombreArchivo() {
 
@@ -31,7 +31,7 @@ const COPIA = (() => {
      */
     async construir() {
 
-      const [categorias, subcategorias, medios, movimientos, fijos, presupuestos] =
+      const [categorias, subcategorias, medios, movimientos, fijos, presupuestos, prestamos] =
         await Promise.all([
           DATOS.catalogo("categorias"),
           DATOS.catalogo("subcategorias"),
@@ -39,6 +39,7 @@ const COPIA = (() => {
           DATOS.movimientos(),
           DATOS.ajuste("fijos", []),
           DATOS.ajuste("presupuestos", {}),
+          DATOS.ajuste("prestamos", []),
         ]);
 
       const categoriaPorId = new Map(categorias.map((c) => [c.id, c]));
@@ -91,6 +92,17 @@ const COPIA = (() => {
           ...nombres(f.subcategoria_id, f.medio_pago_id),
         })),
         presupuestos: topes,
+        prestamos: prestamos.map((p) => ({
+          id: p.id,
+          persona: p.persona,
+          monto: String(p.monto),
+          fecha: p.fecha,
+          limite: p.limite || null,
+          nota: p.nota || null,
+          perdonado: Boolean(p.perdonado),
+          medio_pago: (medioPorId.get(p.medio_pago_id) || {}).nombre || null,
+          abonos: (p.abonos || []).map((a) => ({ id: a.id, fecha: a.fecha, monto: String(a.monto) })),
+        })),
       };
     },
 
@@ -290,6 +302,25 @@ const COPIA = (() => {
           }).filter((f) => f.id && f.subcategoria_id)
         : [];
 
+      // Préstamos (copias de versión 3 en adelante). Se resuelven antes de
+      // guardar los catálogos por si traen un medio de pago nuevo.
+      const prestamosCopia = Array.isArray(copia.prestamos)
+        ? copia.prestamos.filter((p) => p.id && p.persona).map((p) => {
+            const { medio } = resolver({ medio_pago: p.medio_pago, tipo: "gasto" });
+            return {
+              id: p.id,
+              persona: p.persona,
+              monto: String(p.monto),
+              fecha: p.fecha,
+              limite: p.limite || null,
+              nota: p.nota || null,
+              perdonado: Boolean(p.perdonado),
+              medio_pago_id: medio ? medio.id : null,
+              abonos: Array.isArray(p.abonos) ? p.abonos : [],
+            };
+          })
+        : [];
+
       await DATOS.guardarCatalogo("categorias", categorias);
       await DATOS.guardarCatalogo("subcategorias", subcategorias);
       await DATOS.guardarCatalogo("medios_pago", medios);
@@ -309,6 +340,15 @@ const COPIA = (() => {
         await DATOS.guardarAjuste("fijos", [
           ...actuales.filter((f) => !ids.has(f.id)),
           ...fijosCopia,
+        ]);
+      }
+
+      if (Array.isArray(copia.prestamos)) {
+        const actuales = reemplazar ? [] : await DATOS.ajuste("prestamos", []);
+        const ids = new Set(prestamosCopia.map((p) => p.id));
+        await DATOS.guardarAjuste("prestamos", [
+          ...actuales.filter((p) => !ids.has(p.id)),
+          ...prestamosCopia,
         ]);
       }
 

@@ -101,7 +101,7 @@ web/
 ├── js/
 │   ├── config.js         moneda y formatos
 │   ├── datos.js          almacén local (IndexedDB) y catálogo inicial
-│   ├── copia.js          copia JSON (movimientos, fijos y presupuestos)
+│   ├── copia.js          copia JSON (movimientos, fijos, presupuestos y préstamos)
 │   ├── importar_csv.js   importación del histórico en CSV
 │   ├── inteligencia.js   gastos fijos, sugerencias y proyección
 │   ├── resumen.js        gráficas (SVG propio, sin librerías)
@@ -111,7 +111,8 @@ web/
 │   ├── vista_inicio.js        pestaña Inicio
 │   ├── vista_movimientos.js   pestaña Movimientos
 │   ├── vista_analisis.js      pestaña Análisis
-│   ├── vista_planificar.js    pestaña Planificar (fijos y presupuestos)
+│   ├── prestamos.js      préstamos: saldo, abonos, vencidos y balance total
+│   ├── vista_planificar.js    pestaña Planificar (fijos, presupuestos y préstamos)
 │   ├── vista_ajustes.js       pestaña Ajustes (categorías, copia...)
 │   └── main.js           arranque
 └── iconos/

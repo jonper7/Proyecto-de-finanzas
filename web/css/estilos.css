@@ -1020,3 +1020,27 @@ body.sin-scroll { overflow: hidden; }
 }
 .celda { aspect-ratio: 1 / .9; }
 .bloque--hero .proy__cifra { margin-bottom: 12px; }
+
+/* --- Préstamos --- */
+.segmentos { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.segmentos button { font-size: .82rem; padding: 10px 6px; }
+
+.hero__total { margin: 10px 0 0; font-size: .76rem; font-weight: 600; color: rgba(255,255,255,.72); font-variant-numeric: tabular-nums; }
+
+.datos--dos { grid-template-columns: 1fr 1fr; margin-top: 16px; }
+.datos--dos .dato:last-child { grid-column: auto; }
+.dato__nota { font-size: .66rem; color: var(--texto-suave); }
+
+.prestamo__inicial { font-family: var(--display); font-size: 1.05rem; background: linear-gradient(150deg, rgba(48,232,160,.3), rgba(76,201,255,.25)); }
+.prestamo .fijo__monto { color: var(--cian); }
+.prestamo .fijo__accion { gap: 6px; }
+.prestamo--vencido .fijo__monto, .prestamo--vencido .fijo__meta { color: var(--rojo); }
+.prestamo--vencido .prestamo__inicial { background: linear-gradient(150deg, rgba(255,90,115,.35), rgba(255,90,115,.15)); }
+.prestamo--devuelto .fijo__monto { color: var(--verde); }
+.prestamo--devuelto, .prestamo--perdonado { opacity: .62; }
+.prestamo--perdonado .fijo__monto { color: var(--texto-suave); text-decoration: line-through; }
+.prestamo__riel { display: block; height: 4px; margin-top: 6px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+.prestamo__riel i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--cian), var(--verde)); animation: crecer .6s var(--suave) both; }
+.prestamo__riel[hidden] { display: none; }
+.prestamo__seccion { margin: 18px 4px 10px; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--texto-suave); }
+.hoja input[type="date"], #dialogo input[type="date"] { min-height: 46px; color-scheme: dark; }
