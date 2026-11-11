@@ -103,8 +103,19 @@ const DATOS = (() => {
         }
       };
 
+      // Si otra ventana de la app sigue abierta con la versión anterior, la
+      // actualización de la base espera. Se avisa en vez de quedarse en blanco.
+      solicitud.onblocked = () => {
+        console.warn("La base de datos está en uso por otra ventana de la app.");
+      };
+
       solicitud.onsuccess = () => {
         conexion = solicitud.result;
+        // Si una versión más nueva necesita actualizar la base, se suelta.
+        conexion.onversionchange = () => {
+          conexion.close();
+          conexion = null;
+        };
         resolver(conexion);
       };
 

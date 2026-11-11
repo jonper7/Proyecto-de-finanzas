@@ -730,7 +730,51 @@ const AJUSTES = (() => {
   // Pestaña
   // ------------------------------------------------------------------
 
+  /** Muestra la versión instalada (la de la caché del service worker). */
+  async function pintarVersion() {
+
+    const nodo = $("#version-app");
+    let version = "";
+
+    try {
+      const claves = await caches.keys();
+      const f = claves.filter((c) => /^finanzas-v\d+$/.test(c))
+        .sort((a, b) => Number(b.split("-v")[1]) - Number(a.split("-v")[1]))[0];
+      if (f) version = `Versión instalada: ${f.split("-")[1]}.`;
+    } catch (error) { /* sin Cache API */ }
+
+    nodo.textContent = version || "Versión instalada: desconocida.";
+  }
+
+  /**
+   * Borra la copia guardada de la aplicación y vuelve a descargarla.
+   * Los datos (movimientos, préstamos, fotos) no se tocan.
+   */
+  async function actualizarApp() {
+
+    const ok = await DIALOGO.confirmar({
+      titulo: "Actualizar la app",
+      mensaje: "Se descarga de nuevo la última versión publicada. Tus datos no se borran. Necesitas conexión a internet.",
+      aceptar: "Actualizar",
+    });
+    if (!ok) return;
+
+    try {
+      if ("serviceWorker" in navigator) {
+        const registros = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registros.map((r) => r.unregister()));
+      }
+      if (window.caches) {
+        const claves = await caches.keys();
+        await Promise.all(claves.map((c) => caches.delete(c)));
+      }
+    } catch (error) { /* se recarga igualmente */ }
+
+    location.reload();
+  }
+
   function pintar() {
+    pintarVersion();
     pintarEstadoCopia();
     pintarCategorias();
     pintarMedios();
@@ -746,6 +790,7 @@ const AJUSTES = (() => {
     $("#nueva-categoria").addEventListener("click", nuevaCategoria);
     $("#nuevo-medio").addEventListener("click", nuevoMedio);
     $("#mover").addEventListener("click", unirSubcategorias);
+    $("#actualizar-app").addEventListener("click", actualizarApp);
   }
 
   conectar();
